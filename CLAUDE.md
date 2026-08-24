@@ -20,16 +20,31 @@ because `&` is awkward in a URL. Use the right form for the context:
 Never render the site name to a visitor as "StonesAndSagas". In HTML, write the
 ampersand as `&amp;` where the context requires escaping.
 
-## Status: greenfield
+## Status: scaffolded, no content yet [current]
 
-**No application code exists yet.** Tracked contents are:
+The project is scaffolded and deploys, but carries **no real content**. Tracked
+contents:
 
 ```
 .
-├── LICENSE      # MIT, © 2026 Joe Mendonca
-├── README.md    # one-line project description
-└── CLAUDE.md    # this file
+├── .github/workflows/
+│   ├── ci.yml           # PR: install, typecheck, build
+│   └── deploy.yml       # push to main: build, deploy to Pages
+├── public/
+│   └── favicon.svg      # self-made abstract mark, no Marvel imagery
+├── src/pages/
+│   └── index.astro      # placeholder landing page
+├── astro.config.mjs
+├── package.json
+├── package-lock.json
+├── tsconfig.json
+├── LICENSE
+├── README.md
+└── CLAUDE.md
 ```
+
+Not built yet: content collections, Zod schemas, layouts, components, real
+content, styling beyond the placeholder page.
 
 Section tags below tell you how much to trust each one:
 
@@ -37,9 +52,6 @@ Section tags below tell you how much to trust each one:
 - **[decided]** — the owner has chosen this, but it is *not built yet*. Follow it
   when you build; do not describe it as if it already exists.
 - **[convention]** — a sensible default. Follow it unless the owner says otherwise.
-
-Do not reference files, scripts, or directories that aren't listed above until
-you are the one creating them.
 
 ## What the project is [current]
 
@@ -113,12 +125,17 @@ non-negotiable:
 - If a task can't be done without breaking one of these, **say so and propose an
   alternative** instead of committing the asset.
 
-## Tech stack [decided — not yet implemented]
+## Tech stack [current]
 
-**Astro + TypeScript.** Chosen because it ships zero JavaScript by default (a good
-fit for a content site on Pages), is TypeScript-first, and its Content Collections
-validate content against Zod schemas at build time — typed content models, which
-suits the owner's .NET background.
+**Astro + TypeScript**, installed and building. Chosen because it ships zero
+JavaScript by default (a good fit for a content site on Pages), is
+TypeScript-first, and its Content Collections validate content against Zod
+schemas at build time — typed content models, which suits the owner's .NET
+background.
+
+Installed: `astro` (^7), plus `@astrojs/check` and `typescript` as dev
+dependencies for the typecheck step. `tsconfig.json` extends
+`astro/tsconfigs/strict`.
 
 Constraints that still apply:
 
@@ -129,7 +146,8 @@ Constraints that still apply:
 - Prefer Astro components rendering to static HTML. Only reach for a client-side
   framework island if a feature genuinely needs interactivity, and say why.
 
-Expected layout once scaffolded — create directories only as you actually need them:
+Layout — directories marked *(not yet created)* should be added only when you
+actually need them:
 
 ```
 astro.config.mjs
@@ -137,11 +155,11 @@ package.json
 tsconfig.json
 src/
   pages/          # routes
-  layouts/        # shared page shells
-  components/
-  content/        # content collections (Markdown + frontmatter)
-  content.config.ts  # Zod schemas for those collections
-  styles/
+  layouts/        # shared page shells          (not yet created)
+  components/     #                             (not yet created)
+  content/        # content collections         (not yet created)
+  content.config.ts  # Zod schemas              (not yet created)
+  styles/         #                             (not yet created)
 public/           # static assets copied verbatim
 .github/workflows/
 ```
@@ -163,31 +181,41 @@ No database and no runtime API: **all content ships with the build.**
 - Define the schema before authoring a pile of entries — retrofitting one across
   many files is the expensive path.
 
-## Local development [decided — not yet implemented]
+## Local development [current]
 
-Requires Node.js (20 LTS or newer). Once the project is scaffolded, the standard
-Astro scripts apply:
+Requires **Node.js >=22.12.0** (Astro 7's floor; recorded in `package.json`
+under `engines` and pinned to 22 in both workflows).
 
 ```bash
-npm install
-npm run dev      # local dev server with hot reload
+npm install      # or `npm ci` for an exact install from the lockfile
+npm run dev      # dev server with hot reload
+npm run check    # astro check — typecheck .astro/.ts
 npm run build    # production build to dist/
 npm run preview  # serve the built output locally
 ```
 
-> **Unverified.** These are the expected Astro defaults; nothing has been
-> scaffolded or run in this repository yet. When you create the project, run each
-> command, then correct this block to match reality and drop this warning.
+All five were run in this repository and succeed. `npm run dev` and
+`npm run preview` serve under the base path — the site is at
+**`http://localhost:4321/StonesAndSagas/`**, and `http://localhost:4321/`
+correctly 404s. That is the base path working, not a bug.
 
-## Deployment: GitHub Pages [decided — not yet implemented]
+> **Note for AI assistants in sandboxed sessions:** `npm create astro@latest`
+> does not work behind the agent proxy — it fetches templates from
+> codeload.github.com, which returns 403 while the npm registry is reachable.
+> This scaffold was written by hand and `astro` installed from npm. Don't burn
+> time retrying the scaffolder.
 
-The target is GitHub Pages, deployed by GitHub Actions from `main`.
+## Deployment: GitHub Pages [current]
+
+The site deploys to GitHub Pages via GitHub Actions on every push to `main`.
+**Merging to `main` publishes.** Live at
+`https://jsm85.github.io/StonesAndSagas/`.
 
 `jsm85.github.io` is already the owner's user site, so this repo deploys as a
 **project site** at `https://jsm85.github.io/StonesAndSagas/`. That has one
 consequence that breaks first deploys, so get it right up front:
 
-- Set both in `astro.config.mjs`:
+- Both are set in `astro.config.mjs`:
   ```js
   site: 'https://jsm85.github.io',
   base: '/StonesAndSagas',
@@ -199,26 +227,33 @@ consequence that breaks first deploys, so get it right up front:
 - In repo Settings → Pages, the build source must be **GitHub Actions**, not a
   branch. Deploying from a branch runs Jekyll, which strips the underscore-prefixed
   `_astro/` directory and silently breaks styling.
+- `src/pages/index.astro` shows the pattern for referencing a `public/` asset
+  safely — derive it from `import.meta.env.BASE_URL`, never a literal `/path`.
 - Verify a production build locally (`npm run build && npm run preview`) before
   relying on the deploy.
 
-Do not enable public deployment until the owner says the site is ready.
+The site is public. Anything merged to `main` is visible immediately — there is
+no staging step, so treat `main` as production.
 
-## CI/CD [convention]
+## CI/CD [current]
 
-Workflows live in `.github/workflows/`. Two are expected:
+Workflows live in `.github/workflows/`:
 
-- **`ci.yml`** — runs on pull requests: install, build, and whatever checks exist
-  (typecheck, lint, tests). A PR that doesn't build should not be mergeable.
-- **`deploy.yml`** — runs on push to `main`: builds and deploys to Pages. Needs
-  `permissions: { contents: read, pages: write, id-token: write }` and a
-  `concurrency` group so overlapping deploys don't race.
+- **`ci.yml`** — on pull requests: `npm ci`, `npm run check`, `npm run build`.
+  A PR that doesn't build should not be mergeable.
+- **`deploy.yml`** — on push to `main`: builds, uploads the Pages artifact and
+  deploys. Carries `permissions: { contents: read, pages: write, id-token: write }`
+  and a `pages` concurrency group with `cancel-in-progress: false`, so a running
+  deploy finishes rather than being cancelled halfway.
+
+Both pin Node to 22 and use `cache: npm`. Both are also `workflow_dispatch`able
+for manual runs.
 
 Keeping CI honest is part of every change:
 
 - Add a new script or check → **wire it into `ci.yml` in the same PR.**
 - Change how the project builds or what it needs → update the workflows *and*
-  the [Local development](#local-development-decided--not-yet-implemented) section together.
+  the [Local development](#local-development-current) section together.
 - Pin the Node version in the workflow and keep it consistent with what local
   development assumes.
 - CI must never depend on a secret or an external service the owner hasn't set
@@ -226,8 +261,11 @@ Keeping CI honest is part of every change:
 
 ## Testing and verification [current]
 
-There is **no test suite and no linter yet.** Until one exists, verify a change
-by building the site and loading the affected page in a browser.
+There is **no test suite and no linter yet.** What exists is a typecheck:
+`npm run check` (`astro check`), which runs in CI. Until there are real tests,
+verify a change by running `npm run check && npm run build` and loading the
+affected page via `npm run preview` — remembering the base path
+(`/StonesAndSagas/`).
 
 - Never call a change "tested" when no test ran. State exactly what you did:
   which command, which page, what you looked at.

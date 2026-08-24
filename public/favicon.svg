@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Stones and Sagas">
+  <title>Stones &amp; Sagas</title>
+  <polygon points="16,2 27,9 27,23 16,30 5,23 5,9" fill="#6b46c1"/>
+  <polygon points="16,2 27,9 16,16 5,9" fill="#8b5cf6"/>
+  <polygon points="5,9 16,16 16,30 5,23" fill="#553c9a"/>
+  <polygon points="16,16 27,9 27,23 16,30" fill="#7c3aed"/>
+</svg>

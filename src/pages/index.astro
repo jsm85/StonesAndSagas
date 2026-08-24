@@ -1,0 +1,111 @@
+---
+const title = 'Stones & Sagas';
+// BASE_URL carries the '/StonesAndSagas/' prefix in production. Never hardcode
+// a root-relative path here or it resolves above the base and 404s.
+const base = import.meta.env.BASE_URL;
+const asset = (path: string) => `${base.replace(/\/$/, '')}/${path}`;
+const tagline = 'A MARVEL fan site, built for fun.';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={tagline} />
+    <link rel="icon" type="image/svg+xml" href={asset('favicon.svg')} />
+    <title>{title}</title>
+  </head>
+  <body>
+    <main>
+      <h1>Stones &amp; Sagas</h1>
+      <p class="tagline">{tagline}</p>
+      <p class="status">
+        The site is being built. There is nothing here yet — this page exists to
+        prove the build and deployment pipeline works end to end.
+      </p>
+    </main>
+
+    <footer>
+      <p>
+        An unofficial, non-commercial fan project. Not affiliated with, endorsed
+        by, or sponsored by Marvel or The Walt Disney Company. All Marvel
+        characters, names, and related trademarks are the property of their
+        respective owners.
+      </p>
+    </footer>
+
+    <style>
+      :root {
+        --ink: #1a1a2e;
+        --muted: #5a5a72;
+        --accent: #6b46c1;
+        --paper: #fdfdfd;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --ink: #ececf4;
+          --muted: #a0a0b8;
+          --accent: #b794f6;
+          --paper: #16161f;
+        }
+      }
+
+      html {
+        background: var(--paper);
+        color: var(--ink);
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        line-height: 1.6;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        max-width: 40rem;
+        margin-inline: auto;
+        padding: 4rem 1.5rem;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(2.5rem, 8vw, 4rem);
+        letter-spacing: -0.02em;
+        color: var(--accent);
+      }
+
+      .tagline {
+        font-size: 1.25rem;
+        margin: 0.5rem 0 2rem;
+      }
+
+      .status {
+        color: var(--muted);
+        border-left: 3px solid var(--accent);
+        padding-left: 1rem;
+        margin: 0;
+      }
+
+      footer {
+        max-width: 40rem;
+        margin-inline: auto;
+        padding: 2rem 1.5rem;
+      }
+
+      footer p {
+        color: var(--muted);
+        font-size: 0.8rem;
+        margin: 0;
+      }
+    </style>
+  </body>
+</html>
