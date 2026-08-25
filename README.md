@@ -7,11 +7,29 @@ a URL — the site itself is **Stones & Sagas**.
 
 **Live at [jsm85.github.io/StonesAndSagas](https://jsm85.github.io/StonesAndSagas/)**
 
+It's also a deliberate excuse to learn: the project is built almost entirely
+with [Claude](https://claude.ai/code), as a hands-on way of getting good at
+working with it. The conventions that keep that workable live in
+[CLAUDE.md](CLAUDE.md).
+
+## What it will do
+
+Explore the characters and films of the Marvel Cinematic Universe, with three
+things a plain catalogue doesn't give you:
+
+- **Timeline order** — the films in in-universe chronological order, not just
+  release order.
+- **Cross-references between films** — pick a thread, like an Infinity Stone, an
+  object or an event, and see every film and scene that references it, laid out
+  in timeline order. "Every appearance of the Soul Stone, in order."
+- **Recommended reading** — from any film, the comics worth reading alongside
+  it.
+
 ## Status
 
 Scaffolded and deploying, but there's no real content yet — the landing page is
-a placeholder that proves the build and deploy pipeline works. Content
-collections and the first real pages come next.
+a placeholder that proves the build and deploy pipeline works. The features
+above are the plan, not the present.
 
 Built with [Astro](https://astro.build) and TypeScript. No server, no database:
 everything is resolved at build time into static files.

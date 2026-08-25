@@ -67,6 +67,31 @@ Stones & Sagas is a **MARVEL fan static site, built for fun**.
   with the JS build-tool ecosystem; when you introduce a tool, say what it does
   and why it's there.
 
+## What the site does [decided — not yet built]
+
+Stones & Sagas lets people explore the **characters and films of the Marvel
+Cinematic Universe**. Three features beyond a plain catalogue:
+
+- **Timeline ordering** — view the films in in-universe chronological order, not
+  just release order. The two differ substantially.
+- **Cross-references between films** (the headline feature) — pick a thread (an
+  Infinity Stone, an object, a character, an event) and see every film and scene
+  that references it, in timeline order. "Every appearance of the Soul Stone, in
+  order" is the shape of it.
+- **Recommended reading** — from a film, surface the comics worth reading
+  alongside it.
+
+**This shapes the data model, so read it before designing any schema.** The
+cross-reference feature is not a view-layer concern. A flat per-film record
+cannot answer "every scene referencing the Soul Stone in timeline order". See
+[Content and data model](#content-and-data-model-decided--not-yet-implemented)
+for what that requires.
+
+Also note for the [IP rules](#fan-content-and-ip-rules-hard-rule): the
+recommended-reading feature means handling comic metadata. Titles, issue numbers
+and creator credits are facts and fine to store. Cover images and solicitation
+copy are not — link out to an official source instead of copying either.
+
 ## Workflow: issue before code [HARD RULE]
 
 **Every change starts as a GitHub issue, opened and agreed before any code is
@@ -181,6 +206,28 @@ No database and no runtime API: **all content ships with the build.**
 - Define the schema before authoring a pile of entries — retrofitting one across
   many files is the expensive path.
 
+**What the cross-reference feature requires.** The headline feature in
+[What the site does](#what-the-site-does-decided--not-yet-built) constrains the
+schema from day one:
+
+- **Referenceable things are first-class entries with stable IDs** — stones,
+  objects, characters, events — not free text repeated inside each film. "The
+  Soul Stone" written into twelve films as a string cannot be queried, and
+  cannot be renamed.
+- **References are their own records**, each pointing at a film *and* a
+  referenced entity, carrying enough context to render one timeline row: which
+  scene or moment, and what the reference actually is.
+- **Every film needs two orderings** — release date *and* in-universe position.
+  The timeline feature depends on the latter, and it cannot be derived from the
+  former.
+- **Reference integrity belongs in the schema.** Use Zod's `reference()` so a
+  pointer to a stone that doesn't exist fails the build. This is the concrete
+  reason the core content is frontmatter and not CSV: a dead cross-reference
+  should be a build error, not a broken link discovered in production.
+
+Flat, genuinely tabular side data (a lookup of release dates, say) can still be
+CSV or JSON. The relational core cannot.
+
 ## Local development [current]
 
 Requires **Node.js >=22.12.0** (Astro 7's floor; recorded in `package.json`
@@ -259,20 +306,37 @@ Keeping CI honest is part of every change:
 - CI must never depend on a secret or an external service the owner hasn't set
   up. A static fan site needs neither.
 
-## Testing and verification [current]
+## Testing and verification
 
-There is **no test suite and no linter yet.** What exists is a typecheck:
-`npm run check` (`astro check`), which runs in CI. Until there are real tests,
-verify a change by running `npm run check && npm run build` and loading the
-affected page via `npm run preview` — remembering the base path
-(`/StonesAndSagas/`).
+**Every check-in ships unit tests for the behaviour it adds or changes.** Tests
+are part of the change, in the same PR — not a follow-up, not a separate issue.
+
+The carve-out, and only this one: changes with **no logic** — documentation,
+content entries, styling, copy — don't need unit tests, because there is nothing
+to assert. Everything with behaviour does. If you think a change is exempt, say
+so explicitly and why; don't skip quietly.
+
+What deserves a unit test here, concretely: timeline ordering and sorting,
+cross-reference resolution and grouping, schema validation and transforms, date
+and URL helpers, anything parsing or reshaping content. Astro components
+rendering static markup mostly don't.
+
+> **[current] Prerequisite not yet met.** There is **no test runner installed**.
+> `package.json` has `dev`, `build`, `preview` and `check` — nothing else. The
+> only automated verification today is `npm run check` (`astro check`), which
+> runs in CI. **The rule above cannot be honoured until a runner is added**
+> (Vitest is the natural fit — Astro is Vite-based, so it needs little config).
+> Adding it and wiring `npm test` into `ci.yml` is its own issue. Until then, do
+> not claim a change is unit-tested.
+
+Verification rules that apply regardless:
 
 - Never call a change "tested" when no test ran. State exactly what you did:
   which command, which page, what you looked at.
 - If a change can't be verified in this environment, say so plainly rather than
   implying it works.
-- When you add a test runner or linter, document the real command here and add it
-  to `ci.yml` in the same PR.
+- When you add the test runner or a linter, document the real command here and
+  add it to `ci.yml` in the same PR.
 
 ## Document as you go
 
