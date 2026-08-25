@@ -14,16 +14,17 @@ working with it. The conventions that keep that workable live in
 
 ## What it will do
 
-Explore the characters and films of the Marvel Cinematic Universe, with three
-things a plain catalogue doesn't give you:
+Explore the characters, films, TV shows and shorts of the Marvel Cinematic
+Universe, with three things a plain catalogue doesn't give you:
 
-- **Timeline order** — the films in in-universe chronological order, not just
-  release order.
-- **Cross-references between films** — pick a thread, like an Infinity Stone, an
-  object or an event, and see every film and scene that references it, laid out
-  in timeline order. "Every appearance of the Soul Stone, in order."
-- **Recommended reading** — from any film, the comics worth reading alongside
-  it.
+- **Timeline order** — everything in in-universe chronological order, not just
+  release order. TV episodes sit on that timeline individually, interleaved with
+  the films.
+- **Cross-references** — pick a thread, like an Infinity Stone, an object or an
+  event, and see every title and scene that references it, laid out in timeline
+  order. "Every appearance of the Soul Stone, in order."
+- **Recommended reading** — from anything you're watching, the comics worth
+  reading alongside it.
 
 ## Status
 

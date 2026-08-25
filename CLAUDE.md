@@ -69,20 +69,31 @@ Stones & Sagas is a **MARVEL fan static site, built for fun**.
 
 ## What the site does [decided — not yet built]
 
-Stones & Sagas lets people explore the **characters and films of the Marvel
-Cinematic Universe**. Three features beyond a plain catalogue:
+Stones & Sagas lets people explore the **characters and screen titles of the
+Marvel Cinematic Universe** — **films, TV shows and shorts**, not films alone.
+Three features beyond a plain catalogue:
 
-- **Timeline ordering** — view the films in in-universe chronological order, not
+- **Timeline ordering** — view titles in in-universe chronological order, not
   just release order. The two differ substantially.
-- **Cross-references between films** (the headline feature) — pick a thread (an
-  Infinity Stone, an object, a character, an event) and see every film and scene
-  that references it, in timeline order. "Every appearance of the Soul Stone, in
-  order" is the shape of it.
-- **Recommended reading** — from a film, surface the comics worth reading
+- **Cross-references between titles** (the headline feature) — pick a thread (an
+  Infinity Stone, an object, a character, an event) and see every title and
+  scene that references it, in timeline order. "Every appearance of the Soul
+  Stone, in order" is the shape of it.
+- **Recommended reading** — from a title, surface the comics worth reading
   alongside it.
 
+**Terminology:** "title" is the umbrella term for anything on screen. Prefer it
+over "film" in code, schemas and copy — the catalogue is not films-only, and
+naming a collection `films` is a rename waiting to happen. Three kinds:
+
+| Kind | Timeline unit | Note |
+| --- | --- | --- |
+| Film | the title itself | one position on the timeline |
+| TV show | **the episode** | a series spans many timeline positions, often interleaved with other titles |
+| Short | the title itself | e.g. the One-Shots; brief, but they carry real cross-references |
+
 **This shapes the data model, so read it before designing any schema.** The
-cross-reference feature is not a view-layer concern. A flat per-film record
+cross-reference feature is not a view-layer concern. A flat per-title record
 cannot answer "every scene referencing the Soul Stone in timeline order". See
 [Content and data model](#content-and-data-model-decided--not-yet-implemented)
 for what that requires.
@@ -211,15 +222,22 @@ No database and no runtime API: **all content ships with the build.**
 schema from day one:
 
 - **Referenceable things are first-class entries with stable IDs** — stones,
-  objects, characters, events — not free text repeated inside each film. "The
-  Soul Stone" written into twelve films as a string cannot be queried, and
+  objects, characters, events — not free text repeated inside each title. "The
+  Soul Stone" written into twelve titles as a string cannot be queried, and
   cannot be renamed.
-- **References are their own records**, each pointing at a film *and* a
+- **References are their own records**, each pointing at a *timeline unit* and a
   referenced entity, carrying enough context to render one timeline row: which
   scene or moment, and what the reference actually is.
-- **Every film needs two orderings** — release date *and* in-universe position.
-  The timeline feature depends on the latter, and it cannot be derived from the
-  former.
+- **A TV show is not one timeline entry — its episodes are.** This is the main
+  thing films-only thinking gets wrong. A film or short occupies a single
+  timeline position; a series spans many, frequently interleaved with other
+  titles. So the thing a reference points at, and the thing the timeline sorts,
+  is a film, a short, *or an episode* — not a series. Model that from the start;
+  bolting episodes on afterwards means reworking every reference record.
+- **Every timeline unit needs two orderings** — release date *and* in-universe
+  position. The timeline feature depends on the latter, and it cannot be derived
+  from the former. Episodes need their own in-universe position, not just their
+  series'.
 - **Reference integrity belongs in the schema.** Use Zod's `reference()` so a
   pointer to a stone that doesn't exist fails the build. This is the concrete
   reason the core content is frontmatter and not CSV: a dead cross-reference
