@@ -28,9 +28,22 @@ Universe, with three things a plain catalogue doesn't give you:
 
 ## Status
 
-Scaffolded, styled and deploying — but there's no real content yet. The landing
-page proves the build and deploy pipeline works, and now carries the site's
-visual language. The features above are the plan, not the present.
+Scaffolded, styled and deploying, with the content model now in place. The
+landing page proves the build and deploy pipeline works and carries the site's
+visual language; the catalogue itself holds only a handful of seed entries
+proving the schema. The features above are the plan, not the present.
+
+Content is authored as Markdown and validated against Zod schemas at build time:
+films, series and shorts as `titles`, episodes as their own entries — because a
+series spans many points on the in-universe timeline, not one — and comics,
+collected editions and prose books as `reading`, each carrying why it is worth
+reading alongside a given title. Both sides point at shared `people` and
+`characters` by reference rather than repeating names as text, so one character
+gathers appearances across film, television and print. `entities` covers the
+in-universe things worth following — objects, places, realities, organisations,
+events — each carrying the list of moments it turns up in, which is what the
+cross-reference feature reads. Nothing renders it yet.
+See [CLAUDE.md](CLAUDE.md#content-and-data-model-current-except-cross-references).
 
 The look is an 80s Guardians-of-the-Galaxy space aesthetic: a deep indigo void,
 neon magenta and cyan, wide-tracked uppercase mono, a drifting starfield and a

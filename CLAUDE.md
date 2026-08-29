@@ -20,10 +20,11 @@ because `&` is awkward in a URL. Use the right form for the context:
 Never render the site name to a visitor as "StonesAndSagas". In HTML, write the
 ampersand as `&amp;` where the context requires escaping.
 
-## Status: styled scaffold, no content yet [current]
+## Status: styled scaffold with a content model, seed content only [current]
 
-The project is scaffolded, styled and deploys, but carries **no real content**.
-Tracked contents:
+The project is scaffolded, styled and deploys. The content model exists and is
+enforced at build time; what it holds is a **small seed set proving the schema**,
+not a catalogue. Tracked contents:
 
 ```
 .
@@ -38,6 +39,14 @@ Tracked contents:
 │   │   ├── FeatureCard.astro     # card with a procedural "plate" image
 │   │   ├── SiteFooter.astro      # carries the fan-project disclaimer
 │   │   └── SiteHeader.astro      # sticky wordmark + telemetry pill
+│   ├── content/         # the catalogue itself
+│   │   ├── characters/  # one .md per character
+│   │   ├── entities/    # one .md per object, place, reality, group, event
+│   │   ├── episodes/    # one .md per episode — a timeline unit
+│   │   ├── reading/     # one .md per comic issue, collection or book
+│   │   ├── titles/      # one .md per film, series or short
+│   │   └── people.json  # flat lookup: everyone real, screen and print
+│   ├── content.config.ts  # collection definitions + Zod schemas
 │   ├── layouts/
 │   │   └── Base.astro   # shared page shell
 │   ├── pages/
@@ -54,8 +63,8 @@ Tracked contents:
 └── CLAUDE.md
 ```
 
-Not built yet: content collections, Zod schemas, real content, and every page
-beyond the landing page.
+Not built yet: a real catalogue, cross-reference records, and every page beyond
+the landing page — nothing yet renders the content collections.
 
 Section tags below tell you how much to trust each one:
 
@@ -106,13 +115,15 @@ naming a collection `films` is a rename waiting to happen. Three kinds:
 **This shapes the data model, so read it before designing any schema.** The
 cross-reference feature is not a view-layer concern. A flat per-title record
 cannot answer "every scene referencing the Soul Stone in timeline order". See
-[Content and data model](#content-and-data-model-decided--not-yet-implemented)
+[Content and data model](#content-and-data-model-current-except-cross-references)
 for what that requires.
 
 Also note for the [IP rules](#fan-content-and-ip-rules-hard-rule): the
 recommended-reading feature means handling comic metadata. Titles, issue numbers
 and creator credits are facts and fine to store. Cover images and solicitation
-copy are not — link out to an official source instead of copying either.
+copy are not — link out to an official source instead of copying either. The
+`reading` schema enforces this by having nowhere to put a cover; see
+[What exists today](#what-exists-today-current).
 
 ## Workflow: issue before code [HARD RULE]
 
@@ -204,8 +215,8 @@ src/
   pages/          # routes
   layouts/        # shared page shells
   components/     #
-  content/        # content collections         (not yet created)
-  content.config.ts  # Zod schemas              (not yet created)
+  content/        # content collections
+  content.config.ts  # Zod schemas
   styles/         # theme.css tokens + fonts/
 public/           # static assets copied verbatim
 .github/workflows/
@@ -297,7 +308,7 @@ weighs nothing, and holds the composition the design wants. Prefer a plate over
 hunting for a "safe" image. Avoid hard full-width edges in one — they read as a
 progress bar rather than as light.
 
-## Content and data model [decided — not yet implemented]
+## Content and data model [current, except cross-references]
 
 No database and no runtime API: **all content ships with the build.**
 
@@ -324,7 +335,11 @@ schema from day one:
   cannot be renamed.
 - **References are their own records**, each pointing at a *timeline unit* and a
   referenced entity, carrying enough context to render one timeline row: which
-  scene or moment, and what the reference actually is.
+  scene or moment, and what the reference actually is. **Built, with one
+  departure:** they are not separate files. Each is a row in the `appearances`
+  list on the entity it concerns, which keeps a thread readable and checkable in
+  one place and makes adding an entity a single new file. The record still holds
+  everything a timeline row needs.
 - **A TV show is not one timeline entry — its episodes are.** This is the main
   thing films-only thinking gets wrong. A film or short occupies a single
   timeline position; a series spans many, frequently interleaved with other
@@ -336,12 +351,145 @@ schema from day one:
   from the former. Episodes need their own in-universe position, not just their
   series'.
 - **Reference integrity belongs in the schema.** Use Zod's `reference()` so a
-  pointer to a stone that doesn't exist fails the build. This is the concrete
-  reason the core content is frontmatter and not CSV: a dead cross-reference
-  should be a build error, not a broken link discovered in production.
+  pointer to a stone that doesn't exist is caught rather than shipped. This is
+  the concrete reason the core content is frontmatter and not CSV: a dead
+  cross-reference should surface at build time, not as a broken link in
+  production. **But see the caveat below — it does not currently fail the
+  build.**
 
 Flat, genuinely tabular side data (a lookup of release dates, say) can still be
 CSV or JSON. The relational core cannot.
+
+### What exists today [current]
+
+`src/content.config.ts` defines four collections. `titles` is a Zod
+**discriminated union on `kind`**, so the three kinds differ structurally rather
+than by convention:
+
+| Collection | Loader | Holds |
+| --- | --- | --- |
+| `titles` | `glob` over `src/content/titles` | films, series, shorts |
+| `episodes` | `glob` over `src/content/episodes` | one entry per episode |
+| `reading` | `glob` over `src/content/reading` | comic issues, collected editions, prose books |
+| `entities` | `glob` over `src/content/entities` | objects, locations, realities, organisations, events |
+| `people` | `file` over `src/content/people.json` | everyone real: directors, actors, comic creators, authors |
+| `characters` | `glob` over `src/content/characters` | in-universe characters |
+
+Decisions worth knowing before you extend it:
+
+- **A series carries no `timeline` and no `runtimeMinutes`.** Those fields are
+  not merely unset on a series — the union rejects them, because a series is not
+  a point in the chronology. Its episodes are, and each carries its own
+  `timeline.order`. Sorting films, shorts and episodes together by that key is
+  what interleaves a season with the films around it.
+- **`timeline.order` is a bare sort key, not a date.** In-universe time is vague
+  and occasionally circular; a number only has to compare correctly. Seed values
+  are spaced in hundreds so a title can be inserted without renumbering.
+- **Every schema is a `strictObject`.** Zod's default is to *strip* unknown keys,
+  which would silently swallow a misspelled field name. Strict turns that into a
+  build failure — verified: `runtimeMins` fails with `Unrecognized key`.
+- **Cast is `{ character, actor }` reference pairs in the title's frontmatter**,
+  not a separate `castings` collection. A character's filmography is derived by
+  scanning titles. Revisit if per-episode cast overrides get unwieldy.
+- **Certification is a discriminated union over rating systems** (`bbfc`, `mpa`,
+  `us-tv`), each with its own enumerated ratings, so `PG-13` under `bbfc` fails.
+- **Imagery is links, never files.** `poster`, `banner` and `stills` each hold an
+  absolute URL plus the official `source` page and `alt` text. Nothing is
+  committed — see the [IP rules](#fan-content-and-ip-rules-hard-rule). Seed
+  content ships none at all; a title with no imagery renders the accent-keyed
+  plate, which is the expected case rather than a fallback.
+- **Prose lives in the Markdown body**, with a one-or-two-sentence `summary` in
+  frontmatter for cards.
+- **`reading` is a second union on `kind`** — `issue`, `collection`, `book` — so a
+  prose book cannot carry an issue number. It is named `reading` rather than
+  `comics` because prose books belong in it too.
+- **A reading entry has no imagery field at all.** Titles model external poster
+  links; reading entries deliberately cannot, because covers and solicitation
+  copy are the parts of a comic the [IP rules](#fan-content-and-ip-rules-hard-rule)
+  exclude. `official` links out to the publisher instead.
+- **The recommendation lives on the reading entry**, as `related: [{ title,
+  relationship, note }]`, not as a list on each film. Adding a comic is then one
+  new file rather than a file plus edits to every title it relates to, and one
+  work can be recommended from several. `relationship` is enumerated (`adapts`,
+  `introduces`, `inspires`, `expands`, `background`) because it decides how a
+  recommendation is grouped and labelled; free text cannot be grouped on. At
+  least one relation is required — a work related to nothing cannot surface.
+- **Recommendations attach to titles, not episodes.** A series can be
+  recommended against as a whole. Revisit if an individual episode ever needs
+  its own list.
+- **Comic creators are `people`**, with a role enum, so a person credited on both
+  a film and a comic is one entry. This is what lets a character's page gather a
+  film, an episode and an issue: all three point at the same character id.
+- **A cover date is a month (`YYYY-MM`), not a date.** It is also not the day the
+  issue reached shops, so storing one would invent precision.
+- **`entities` is one collection with a `kind` union, not five collections.** An
+  appearance points at exactly one referenceable thing, and `reference()` names a
+  single collection — five would force an unvalidated `{ type, id }` pair or five
+  optional fields. `designation` is rejected on anything but a `reality`, and a
+  `timeline` block on anything but an `event`.
+- **Appearances live on the entity**, as `appearances: [{ unit, type, scene,
+  note }]`. "Every appearance of the Soul Stone, in order" is then one file to
+  read and check. `characters` carries the identical field, so "every appearance
+  of X" is one code path whether X is a person or a stone — and it captures what
+  a cast list cannot: a character *mentioned* in a title they never appear in.
+- **A reality is both an entity and a timeline property.** `timeline.order` alone
+  assumes one linear chronology, which multiverse material breaks, so
+  `timelinePosition` carries an optional `reality` pointer. Omitted means
+  Earth-616, which is why nothing authored before it had to change.
+- **`partOf` is set membership, not a relationship graph.** It gives you "all six
+  stones" from one field, and deliberately nothing else: the Tesseract *contains*
+  the Space Stone, and that nuance lives in prose rather than in a single-parent
+  pointer forced to mean two things.
+- `import { z } from 'astro/zod'`, not from `astro:content` — the latter is
+  deprecated and goes in Astro 8. Astro 7 ships Zod 4, where `.default()` takes
+  the **output** value: `imagery.default({ stills: [] })`, not `{}`.
+
+Note that a reading recommendation is *not* a cross-reference: "read this
+alongside that" and "this scene references the Soul Stone" are different
+relationships, and they are modelled separately — `related` on a reading entry,
+`appearances` on an entity.
+
+Not built: anything that *renders* this. Resolving appearances across `titles`
+and `episodes` and sorting them into timeline order is the first real logic in
+the project, so it ships with the page that needs it and with tests — which
+means a test runner (#7) lands first.
+
+### Caveat: a dead reference does not fail the build [current]
+
+Verified against Astro 7.2: a `reference()` pointing at an entry that does not
+exist logs
+
+```
+[ERROR] [content] Invalid content reference: entry "iron-man" in collection
+"titles" (field: cast[2].character) references "obadiah-stain" in collection
+"characters", but that entry does not exist.
+```
+
+…and then **exits 0**. Both `npm run build` and `npm run check` do this, and so
+does a build whose page resolves the reference via `getEntry` — the entry simply
+comes back `undefined`. CI greps nothing, so a broken pointer merges green.
+
+Schema validation proper — a bad enum, a missing required field, an unknown key
+— *does* fail with a non-zero exit. It is only referential integrity that
+doesn't. Until that gap is closed, do not claim references are build-enforced,
+and read the build log rather than trusting the exit code when you touch
+content.
+
+**Worse inside a discriminated union.** A `reference()` nested in a
+`z.discriminatedUnion` is not checked at all — no error, no log line, nothing.
+Every other position at least logs. A plain `z.union` *is* walked, which is why
+`timelineUnit` is one:
+
+```ts
+z.union([
+  z.strictObject({ title: reference('titles') }),
+  z.strictObject({ episode: reference('episodes') }),
+])
+```
+
+That shape also makes "exactly one of the two" structural — neither and both are
+build failures. Prefer a plain union over a discriminated one wherever a
+reference sits inside it; the discriminator costs you the only check there is.
 
 ## Local development [current]
 
