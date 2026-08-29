@@ -35,10 +35,12 @@ proving the schema. The features above are the plan, not the present.
 
 Content is authored as Markdown and validated against Zod schemas at build time:
 films, series and shorts as `titles`, episodes as their own entries — because a
-series spans many points on the in-universe timeline, not one — plus `people`
-and `characters`, which titles point at by reference rather than repeating as
-text. Nothing renders it yet. See
-[CLAUDE.md](CLAUDE.md#content-and-data-model-current-except-cross-references).
+series spans many points on the in-universe timeline, not one — and comics,
+collected editions and prose books as `reading`, each carrying why it is worth
+reading alongside a given title. Both sides point at shared `people` and
+`characters` by reference rather than repeating names as text, so one character
+gathers appearances across film, television and print. Nothing renders it yet.
+See [CLAUDE.md](CLAUDE.md#content-and-data-model-current-except-cross-references).
 
 The look is an 80s Guardians-of-the-Galaxy space aesthetic: a deep indigo void,
 neon magenta and cyan, wide-tracked uppercase mono, a drifting starfield and a

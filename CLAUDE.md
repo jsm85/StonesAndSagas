@@ -42,8 +42,9 @@ not a catalogue. Tracked contents:
 │   ├── content/         # the catalogue itself
 │   │   ├── characters/  # one .md per character
 │   │   ├── episodes/    # one .md per episode — a timeline unit
+│   │   ├── reading/     # one .md per comic issue, collection or book
 │   │   ├── titles/      # one .md per film, series or short
-│   │   └── people.json  # flat lookup: directors, creators, actors
+│   │   └── people.json  # flat lookup: everyone real, screen and print
 │   ├── content.config.ts  # collection definitions + Zod schemas
 │   ├── layouts/
 │   │   └── Base.astro   # shared page shell
@@ -119,7 +120,9 @@ for what that requires.
 Also note for the [IP rules](#fan-content-and-ip-rules-hard-rule): the
 recommended-reading feature means handling comic metadata. Titles, issue numbers
 and creator credits are facts and fine to store. Cover images and solicitation
-copy are not — link out to an official source instead of copying either.
+copy are not — link out to an official source instead of copying either. The
+`reading` schema enforces this by having nowhere to put a cover; see
+[What exists today](#what-exists-today-current).
 
 ## Workflow: issue before code [HARD RULE]
 
@@ -362,7 +365,8 @@ than by convention:
 | --- | --- | --- |
 | `titles` | `glob` over `src/content/titles` | films, series, shorts |
 | `episodes` | `glob` over `src/content/episodes` | one entry per episode |
-| `people` | `file` over `src/content/people.json` | directors, creators, actors |
+| `reading` | `glob` over `src/content/reading` | comic issues, collected editions, prose books |
+| `people` | `file` over `src/content/people.json` | everyone real: directors, actors, comic creators, authors |
 | `characters` | `glob` over `src/content/characters` | in-universe characters |
 
 Decisions worth knowing before you extend it:
@@ -390,13 +394,38 @@ Decisions worth knowing before you extend it:
   plate, which is the expected case rather than a fallback.
 - **Prose lives in the Markdown body**, with a one-or-two-sentence `summary` in
   frontmatter for cards.
+- **`reading` is a second union on `kind`** — `issue`, `collection`, `book` — so a
+  prose book cannot carry an issue number. It is named `reading` rather than
+  `comics` because prose books belong in it too.
+- **A reading entry has no imagery field at all.** Titles model external poster
+  links; reading entries deliberately cannot, because covers and solicitation
+  copy are the parts of a comic the [IP rules](#fan-content-and-ip-rules-hard-rule)
+  exclude. `official` links out to the publisher instead.
+- **The recommendation lives on the reading entry**, as `related: [{ title,
+  relationship, note }]`, not as a list on each film. Adding a comic is then one
+  new file rather than a file plus edits to every title it relates to, and one
+  work can be recommended from several. `relationship` is enumerated (`adapts`,
+  `introduces`, `inspires`, `expands`, `background`) because it decides how a
+  recommendation is grouped and labelled; free text cannot be grouped on. At
+  least one relation is required — a work related to nothing cannot surface.
+- **Recommendations attach to titles, not episodes.** A series can be
+  recommended against as a whole. Revisit if an individual episode ever needs
+  its own list.
+- **Comic creators are `people`**, with a role enum, so a person credited on both
+  a film and a comic is one entry. This is what lets a character's page gather a
+  film, an episode and an issue: all three point at the same character id.
+- **A cover date is a month (`YYYY-MM`), not a date.** It is also not the day the
+  issue reached shops, so storing one would invent precision.
 - `import { z } from 'astro/zod'`, not from `astro:content` — the latter is
   deprecated and goes in Astro 8. Astro 7 ships Zod 4, where `.default()` takes
   the **output** value: `imagery.default({ stills: [] })`, not `{}`.
 
 Not built: cross-reference records (stones, objects, events) and the entities
 they point at beyond `characters`. The model above is shaped to take them — they
-point at a film, a short or an episode — but nothing is written yet.
+point at a film, a short or an episode — but nothing is written yet. Note that a
+reading recommendation is *not* one of them: "read this alongside that" and
+"this scene references the Soul Stone" are different relationships, and only the
+first exists today.
 
 ### Caveat: a dead reference does not fail the build [current]
 

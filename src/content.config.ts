@@ -7,14 +7,16 @@
  * equivalent of a compile error, which is the whole reason we're on Astro
  * Content Collections rather than loading loose JSON at runtime.
  *
- * Four collections:
+ * Five collections:
  *
  *   titles      films, TV series and shorts
  *   episodes    one entry per episode; a series' episodes, not the series,
  *               are what the timeline sorts
- *   people      directors, actors — a flat lookup, so one JSON file
- *   characters  in-universe characters, first-class so that cross-references
- *               can point at them later
+ *   reading     printed works — comic issues, collected editions, prose books
+ *   people      everyone real: directors, actors, comic creators, authors —
+ *               a flat lookup, so one JSON file
+ *   characters  in-universe characters, first-class so that titles and reading
+ *               entries alike point at one entity rather than a string
  *
  * `reference('people')` is the important primitive: it stores an id, checks at
  * build time that an entry with that id exists in that collection, and gives
@@ -170,6 +172,68 @@ const selfContained = {
   timeline: timelinePosition,
 };
 
+/*
+ * A month, as `YYYY-MM`.
+ *
+ * A comic's cover date is a month, and is not the date it reached shops. Storing
+ * a full date would be inventing precision we don't have, so this is a string
+ * with a shape rather than a `Date`. YAML leaves `1963-03` alone — it only
+ * coerces a complete date — but quote it anyway when authoring.
+ */
+const yearMonth = z
+  .string()
+  .regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Expected a month as YYYY-MM');
+
+/*
+ * One credit on a printed work.
+ *
+ * `person` points at the same `people` collection the films use, so Stan Lee is
+ * one entity whether he is credited on a comic or on a film — the same argument
+ * that makes characters first-class rather than strings.
+ */
+const credit = z.strictObject({
+  person: reference('people'),
+  role: z.enum([
+    'writer',
+    'penciller',
+    'inker',
+    'artist',
+    'colourist',
+    'letterer',
+    'coverArtist',
+    'editor',
+    'author',
+  ]),
+});
+
+/*
+ * Why a printed work is worth reading alongside a screen title.
+ *
+ * The relationship is enumerated rather than prose because it decides how the
+ * recommendation is grouped and labelled — "Adapted from", "First appearance" —
+ * and a free-text field cannot be grouped on. The note says why in our own
+ * words, and is where the actual recommendation lives.
+ */
+const relatedTitle = z.strictObject({
+  /* Recommendations attach to a title, including a series as a whole, rather
+     than to an individual episode. Revisit if a single episode ever needs its
+     own reading list. */
+  title: reference('titles'),
+  relationship: z.enum([
+    /* The screen title tells this story. */
+    'adapts',
+    /* Where a character, object or idea first appeared in print. */
+    'introduces',
+    /* Informed the tone or direction without being adapted. */
+    'inspires',
+    /* Goes further into material the screen title covers. */
+    'expands',
+    /* Useful context rather than a direct connection. */
+    'background',
+  ]),
+  note: z.string().min(1).optional(),
+});
+
 /* -------------------------------------------------------------------------
  * Collections
  * ---------------------------------------------------------------------- */
@@ -244,10 +308,81 @@ const episodes = defineCollection({
 });
 
 /*
- * People: directors, creators, actors.
+ * Reading: comic issues, collected editions and prose books.
+ *
+ * The printed half of the catalogue, and what the recommended-reading feature
+ * surfaces from a title. Named `reading` rather than `comics` because prose
+ * books belong here too.
+ *
+ * Note what this schema does *not* have: any imagery field at all. The IP rules
+ * allow titles, issue numbers and creator credits — those are facts — but not
+ * cover images or solicitation copy. So a cover has nowhere to go, summaries are
+ * written in our own words, and `official` links out to the publisher instead.
+ * That is a deliberate difference from `titles`, which does model external
+ * poster links.
+ *
+ * The recommendation lives here rather than on the screen title: adding a comic
+ * is one new file instead of a new file plus an edit to every film it relates
+ * to, and one work can be recommended from several titles at once.
+ */
+const readingCommon = {
+  title: z.string().min(1),
+  /* Our own words. Never the publisher's solicitation copy. */
+  summary: z.string().min(1),
+  publisher: z.string().min(1).optional(),
+  /* Cover date for an issue, publication month otherwise. */
+  published: yearMonth,
+  creators: z.array(credit).default([]),
+  /* Who appears in it — the reason a character's page can list a film, an
+     episode and a comic issue side by side. */
+  characters: z.array(reference('characters')).default([]),
+  /* The publisher's own page for the work, to link out to rather than
+     reproducing anything from it. */
+  official: z.url().optional(),
+  /* At least one: a work related to nothing has nowhere to surface, so it would
+     be content nobody can reach. */
+  related: z.array(relatedTitle).min(1),
+};
+
+/* Digits only, no hyphens — one way of writing it, so ids stay comparable. */
+const isbn = z
+  .string()
+  .regex(/^(?:\d{9}[\dX]|\d{13})$/, 'Expected an ISBN-10 or ISBN-13, digits only');
+
+const reading = defineCollection({
+  loader: glob({ base: './src/content/reading', pattern: '**/*.md' }),
+  schema: z.discriminatedUnion('kind', [
+    z.strictObject({
+      kind: z.literal('issue'),
+      ...readingCommon,
+      /* The comic series it belongs to, as printed on the cover. Not a
+         reference: a run's title is not itself an entry here. */
+      series: z.string().min(1),
+      /* A string, not a number — annuals, decimals and `#1.MU` all exist. */
+      issueNumber: z.string().min(1),
+    }),
+    z.strictObject({
+      kind: z.literal('collection'),
+      ...readingCommon,
+      /* What's inside, as a reader would ask for it: 'The Vision #1-12'. */
+      collects: z.string().min(1),
+      isbn: isbn.optional(),
+    }),
+    z.strictObject({
+      kind: z.literal('book'),
+      ...readingCommon,
+      isbn: isbn.optional(),
+    }),
+  ]),
+});
+
+/*
+ * People: everyone real — directors, actors, comic creators, authors.
  *
  * Flat reference data — an id and a name — so it is one JSON file rather than
- * a directory of files that would each hold a single line of frontmatter.
+ * a directory of files that would each hold a single line of frontmatter. One
+ * collection for all of them, so a person credited on both a film and a comic
+ * is one entry.
  * These are real, living people; the collection deliberately has nowhere to
  * put biography, and there is no reason for it to grow one.
  */
@@ -263,8 +398,10 @@ const people = defineCollection({
  * Characters — first-class entries, not strings inside cast lists.
  *
  * They are also the first of the "referenceable things" the cross-reference
- * feature needs: stones, objects and events will follow the same shape. The
- * body of each file is an original description written for this site.
+ * feature needs: stones, objects and events will follow the same shape. Titles,
+ * episodes and reading entries all point here, which is what lets a character's
+ * page gather appearances across media. The body of each file is an original
+ * description written for this site.
  */
 const characters = defineCollection({
   loader: glob({ base: './src/content/characters', pattern: '**/*.md' }),
@@ -276,4 +413,4 @@ const characters = defineCollection({
   }),
 });
 
-export const collections = { titles, episodes, people, characters };
+export const collections = { titles, episodes, reading, people, characters };
