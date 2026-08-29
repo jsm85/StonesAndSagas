@@ -39,7 +39,10 @@ series spans many points on the in-universe timeline, not one — and comics,
 collected editions and prose books as `reading`, each carrying why it is worth
 reading alongside a given title. Both sides point at shared `people` and
 `characters` by reference rather than repeating names as text, so one character
-gathers appearances across film, television and print. Nothing renders it yet.
+gathers appearances across film, television and print. `entities` covers the
+in-universe things worth following — objects, places, realities, organisations,
+events — each carrying the list of moments it turns up in, which is what the
+cross-reference feature reads. Nothing renders it yet.
 See [CLAUDE.md](CLAUDE.md#content-and-data-model-current-except-cross-references).
 
 The look is an 80s Guardians-of-the-Galaxy space aesthetic: a deep indigo void,

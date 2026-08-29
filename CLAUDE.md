@@ -41,6 +41,7 @@ not a catalogue. Tracked contents:
 │   │   └── SiteHeader.astro      # sticky wordmark + telemetry pill
 │   ├── content/         # the catalogue itself
 │   │   ├── characters/  # one .md per character
+│   │   ├── entities/    # one .md per object, place, reality, group, event
 │   │   ├── episodes/    # one .md per episode — a timeline unit
 │   │   ├── reading/     # one .md per comic issue, collection or book
 │   │   ├── titles/      # one .md per film, series or short
@@ -334,7 +335,11 @@ schema from day one:
   cannot be renamed.
 - **References are their own records**, each pointing at a *timeline unit* and a
   referenced entity, carrying enough context to render one timeline row: which
-  scene or moment, and what the reference actually is.
+  scene or moment, and what the reference actually is. **Built, with one
+  departure:** they are not separate files. Each is a row in the `appearances`
+  list on the entity it concerns, which keeps a thread readable and checkable in
+  one place and makes adding an entity a single new file. The record still holds
+  everything a timeline row needs.
 - **A TV show is not one timeline entry — its episodes are.** This is the main
   thing films-only thinking gets wrong. A film or short occupies a single
   timeline position; a series spans many, frequently interleaved with other
@@ -366,6 +371,7 @@ than by convention:
 | `titles` | `glob` over `src/content/titles` | films, series, shorts |
 | `episodes` | `glob` over `src/content/episodes` | one entry per episode |
 | `reading` | `glob` over `src/content/reading` | comic issues, collected editions, prose books |
+| `entities` | `glob` over `src/content/entities` | objects, locations, realities, organisations, events |
 | `people` | `file` over `src/content/people.json` | everyone real: directors, actors, comic creators, authors |
 | `characters` | `glob` over `src/content/characters` | in-universe characters |
 
@@ -416,16 +422,37 @@ Decisions worth knowing before you extend it:
   film, an episode and an issue: all three point at the same character id.
 - **A cover date is a month (`YYYY-MM`), not a date.** It is also not the day the
   issue reached shops, so storing one would invent precision.
+- **`entities` is one collection with a `kind` union, not five collections.** An
+  appearance points at exactly one referenceable thing, and `reference()` names a
+  single collection — five would force an unvalidated `{ type, id }` pair or five
+  optional fields. `designation` is rejected on anything but a `reality`, and a
+  `timeline` block on anything but an `event`.
+- **Appearances live on the entity**, as `appearances: [{ unit, type, scene,
+  note }]`. "Every appearance of the Soul Stone, in order" is then one file to
+  read and check. `characters` carries the identical field, so "every appearance
+  of X" is one code path whether X is a person or a stone — and it captures what
+  a cast list cannot: a character *mentioned* in a title they never appear in.
+- **A reality is both an entity and a timeline property.** `timeline.order` alone
+  assumes one linear chronology, which multiverse material breaks, so
+  `timelinePosition` carries an optional `reality` pointer. Omitted means
+  Earth-616, which is why nothing authored before it had to change.
+- **`partOf` is set membership, not a relationship graph.** It gives you "all six
+  stones" from one field, and deliberately nothing else: the Tesseract *contains*
+  the Space Stone, and that nuance lives in prose rather than in a single-parent
+  pointer forced to mean two things.
 - `import { z } from 'astro/zod'`, not from `astro:content` — the latter is
   deprecated and goes in Astro 8. Astro 7 ships Zod 4, where `.default()` takes
   the **output** value: `imagery.default({ stills: [] })`, not `{}`.
 
-Not built: cross-reference records (stones, objects, events) and the entities
-they point at beyond `characters`. The model above is shaped to take them — they
-point at a film, a short or an episode — but nothing is written yet. Note that a
-reading recommendation is *not* one of them: "read this alongside that" and
-"this scene references the Soul Stone" are different relationships, and only the
-first exists today.
+Note that a reading recommendation is *not* a cross-reference: "read this
+alongside that" and "this scene references the Soul Stone" are different
+relationships, and they are modelled separately — `related` on a reading entry,
+`appearances` on an entity.
+
+Not built: anything that *renders* this. Resolving appearances across `titles`
+and `episodes` and sorting them into timeline order is the first real logic in
+the project, so it ships with the page that needs it and with tests — which
+means a test runner (#7) lands first.
 
 ### Caveat: a dead reference does not fail the build [current]
 
@@ -447,6 +474,22 @@ Schema validation proper — a bad enum, a missing required field, an unknown ke
 doesn't. Until that gap is closed, do not claim references are build-enforced,
 and read the build log rather than trusting the exit code when you touch
 content.
+
+**Worse inside a discriminated union.** A `reference()` nested in a
+`z.discriminatedUnion` is not checked at all — no error, no log line, nothing.
+Every other position at least logs. A plain `z.union` *is* walked, which is why
+`timelineUnit` is one:
+
+```ts
+z.union([
+  z.strictObject({ title: reference('titles') }),
+  z.strictObject({ episode: reference('episodes') }),
+])
+```
+
+That shape also makes "exactly one of the two" structural — neither and both are
+build failures. Prefer a plain union over a discriminated one wherever a
+reference sits inside it; the discriminator costs you the only check there is.
 
 ## Local development [current]
 

@@ -7,12 +7,14 @@
  * equivalent of a compile error, which is the whole reason we're on Astro
  * Content Collections rather than loading loose JSON at runtime.
  *
- * Five collections:
+ * Six collections:
  *
  *   titles      films, TV series and shorts
  *   episodes    one entry per episode; a series' episodes, not the series,
  *               are what the timeline sorts
  *   reading     printed works — comic issues, collected editions, prose books
+ *   entities    in-universe things worth following across the saga: objects,
+ *               locations, realities, organisations, events
  *   people      everyone real: directors, actors, comic creators, authors —
  *               a flat lookup, so one JSON file
  *   characters  in-universe characters, first-class so that titles and reading
@@ -126,7 +128,84 @@ const timelinePosition = z.strictObject({
   setting: z.string().optional(),
   /* Why it sits here, when that isn't obvious — framing devices, flashbacks. */
   note: z.string().optional(),
+  /*
+   * Which reality this sits in — a `kind: reality` entity.
+   *
+   * `order` alone assumes a single linear chronology, which multiverse material
+   * breaks: sorted naively, a What If…? episode interleaves nonsense into the
+   * main sequence. With this, "in-universe order" means "in-universe order, in
+   * this reality", and a divergent line sorts on its own.
+   *
+   * Omitted means the primary reality (Earth-616), which is why nothing
+   * authored so far had to change.
+   */
+  reality: reference('entities').optional(),
 });
+
+/*
+ * A pointer at one timeline unit: a film, a short, or an episode.
+ *
+ * Two collections, one field, because a series is not a timeline unit but a film
+ * and an episode both are, and `reference()` names a single collection. Authored
+ * as `{ title: iron-man }` or `{ episode: wandavision-s01e01 }`.
+ *
+ * A plain `z.union` of two strict objects, each with its field required, which
+ * gets both properties we want: exactly one of the two must be set — neither and
+ * both are build failures — and the reference inside is still checked.
+ *
+ * That second half is worth knowing, because the obvious alternative silently
+ * loses it. Verified against Astro 7.2: a `reference()` nested inside a
+ * `z.discriminatedUnion` is not checked *at all* — a pointer at an entry that
+ * does not exist produces no error and no log line, where every other position
+ * at least logs one (see the caveat at the top of this file). A plain union does
+ * get walked. So the shape here is not a style preference; a discriminated union
+ * on a `collection` field would be strictly worse.
+ *
+ * What no shape can check: that a `titles` pointer is a film or short rather
+ * than a series. Zod sees the id, not the kind of the entry behind it. Same
+ * class of gap as an episode's `series` pointer.
+ */
+const timelineUnit = z.union([
+  z.strictObject({ title: reference('titles') }),
+  z.strictObject({ episode: reference('episodes') }),
+]);
+
+/*
+ * One appearance: a thing, somewhere on the timeline, doing something.
+ *
+ * These are the records the cross-reference feature reads. They live on the
+ * entity rather than on the title — see the `entities` collection below for why
+ * — and `characters` carries the same field, so "every appearance of X, in
+ * order" is one code path whether X is a person or a stone.
+ */
+const appearance = z.strictObject({
+  unit: timelineUnit,
+  /*
+   * What kind of appearance it is. Enumerated because it decides how a row is
+   * labelled and lets a page separate "the stone is here" from "someone says
+   * its name" — the distinction free text cannot be filtered on.
+   */
+  type: z.enum([
+    /* Physically present on screen. */
+    'appears',
+    /* Named or discussed, but not present. */
+    'mentioned',
+    /* Changes hands, in either direction. */
+    'acquired',
+    'lost',
+    'destroyed',
+    /* Used for what it does. */
+    'wielded',
+    /* Made, founded, or first assembled here. */
+    'created',
+  ]),
+  /* Which moment, in a few words: 'The Red Skull opens the cube'. */
+  scene: z.string().optional(),
+  /* What the reference actually is, in our own words. */
+  note: z.string().optional(),
+});
+
+const appearances = z.array(appearance).default([]);
 
 /*
  * One casting: a character, and the actor who played them in this title.
@@ -377,6 +456,68 @@ const reading = defineCollection({
 });
 
 /*
+ * Entities — the in-universe things worth following across the saga.
+ *
+ * One collection with a `kind` union rather than five collections
+ * (`objects`, `locations`, …), because an appearance has to point at exactly one
+ * referenceable thing and `reference()` names a single collection. Five
+ * collections would force either an unvalidated `{ type, id }` pair or five
+ * optional fields; this keeps one typed pointer.
+ *
+ * Appearances live here, on the entity, rather than as a list on each film or as
+ * one file per reference. "Every appearance of the Soul Stone, in order" is then
+ * a single file you can read top to bottom and check the ordering of, and adding
+ * an entity touches nothing else. The reverse question — what does this film
+ * reference — is a scan over a small collection, the same trade the reading
+ * recommendations make.
+ */
+const entityCommon = {
+  name: z.string().min(1),
+  aka: z.array(z.string()).default([]),
+  summary: z.string().min(1),
+  /*
+   * The larger thing this belongs to — the Space Stone to the Infinity Stones.
+   * Set membership, deliberately not a general relationship graph: the Tesseract
+   * *contains* the Space Stone, and that nuance belongs in prose rather than in
+   * a single-parent pointer that would have to mean two different things.
+   */
+  partOf: reference('entities').optional(),
+  appearances,
+};
+
+const entities = defineCollection({
+  loader: glob({ base: './src/content/entities', pattern: '**/*.md' }),
+  schema: z.discriminatedUnion('kind', [
+    /* Things: stones, weapons, ships, the item in Item 47. */
+    z.strictObject({ kind: z.literal('object'), ...entityCommon }),
+    /* Places: planets, realms, cities, a town in New Jersey. */
+    z.strictObject({ kind: z.literal('location'), ...entityCommon }),
+    /* Groups: HYDRA, S.H.I.E.L.D., the Ravagers. */
+    z.strictObject({ kind: z.literal('organisation'), ...entityCommon }),
+    /*
+     * Things that happened. An event has a position in the chronology of its own,
+     * independent of any one title: the Battle of New York is a fixed point that
+     * several titles refer back to without depicting it.
+     */
+    z.strictObject({
+      kind: z.literal('event'),
+      ...entityCommon,
+      timeline: timelinePosition.optional(),
+    }),
+    /*
+     * A reality. Not a thing that appears in a scene — the context a scene
+     * happens in, which is why `timelinePosition` points at one of these.
+     */
+    z.strictObject({
+      kind: z.literal('reality'),
+      ...entityCommon,
+      /* 'Earth-616'. Optional: not every reality on screen is given a number. */
+      designation: z.string().min(1).optional(),
+    }),
+  ]),
+});
+
+/*
  * People: everyone real — directors, actors, comic creators, authors.
  *
  * Flat reference data — an id and a name — so it is one JSON file rather than
@@ -410,7 +551,17 @@ const characters = defineCollection({
     /* Aliases, code names, titles — 'Iron Man', 'the Red Skull'. */
     aka: z.array(z.string()).default([]),
     summary: z.string().min(1),
+    /*
+     * The same field the entities carry, so "every appearance of X, in order" is
+     * one code path whether X is a person or a stone.
+     *
+     * This is not a duplicate of the cast lists. Cast records who *played* them
+     * in a title; this records references — most usefully a character named or
+     * discussed in a title they never appear in, which a cast list has no way to
+     * express. Expect both to feed one merged view.
+     */
+    appearances,
   }),
 });
 
-export const collections = { titles, episodes, reading, people, characters };
+export const collections = { titles, episodes, reading, entities, people, characters };

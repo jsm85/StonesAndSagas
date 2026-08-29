@@ -20,6 +20,9 @@ cast:
   - character: johann-schmidt
     actor: hugo-weaving
     billing: 3
+  - character: howard-stark
+    actor: dominic-cooper
+    billing: 4
 timeline:
   order: 100
   setting: "1943–1945 — New York, the European theatre, the Arctic"
