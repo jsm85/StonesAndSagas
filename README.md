@@ -62,6 +62,7 @@ Requires Node.js 22.12 or newer.
 npm install
 npm run dev      # dev server with hot reload
 npm run check    # typecheck
+npm test         # unit tests
 npm run build    # production build to dist/
 npm run preview  # serve the built output
 ```

@@ -500,11 +500,13 @@ under `engines` and pinned to 22 in both workflows).
 npm install      # or `npm ci` for an exact install from the lockfile
 npm run dev      # dev server with hot reload
 npm run check    # astro check — typecheck .astro/.ts
+npm test         # vitest run — the unit suite, once
+npm run test:watch  # vitest, left running
 npm run build    # production build to dist/
 npm run preview  # serve the built output locally
 ```
 
-All five were run in this repository and succeed. `npm run dev` and
+All of them were run in this repository and succeed. `npm run dev` and
 `npm run preview` serve under the base path — the site is at
 **`http://localhost:4321/StonesAndSagas/`**, and `http://localhost:4321/`
 correctly 404s. That is the base path working, not a bug.
@@ -584,13 +586,26 @@ cross-reference resolution and grouping, schema validation and transforms, date
 and URL helpers, anything parsing or reshaping content. Astro components
 rendering static markup mostly don't.
 
-> **[current] Prerequisite not yet met.** There is **no test runner installed**.
-> `package.json` has `dev`, `build`, `preview` and `check` — nothing else. The
-> only automated verification today is `npm run check` (`astro check`), which
-> runs in CI. **The rule above cannot be honoured until a runner is added**
-> (Vitest is the natural fit — Astro is Vite-based, so it needs little config).
-> Adding it and wiring `npm test` into `ci.yml` is its own issue. Until then, do
-> not claim a change is unit-tested.
+**The runner is Vitest** [current], installed as a dev dependency and wired into
+`ci.yml` between the typecheck and the build. `npm test` runs it once;
+`npm run test:watch` leaves it running. Tests live beside the code they cover as
+`src/**/*.test.ts` — no separate tree, because a helper and its tests being
+adjacent is what makes anyone open them.
+
+Astro is Vite-based, so Vitest needs almost no configuration. `vitest.config.ts`
+sets exactly one thing, and it is worth knowing about:
+
+```ts
+process.env.TZ = 'America/Los_Angeles';
+```
+
+Release dates are authored as bare days (`2008-05-02`) and parsed as midnight
+UTC. Rendered in local time they come out as 1 May for anyone west of Greenwich —
+every release reported a day early, on a site about chronology. The formatters in
+`src/lib/format.ts` pin the zone to UTC; running the suite in a US timezone is
+what makes removing that pin fail the tests on a UK machine, where the bug is
+otherwise invisible. Verified by mutation: deleting the pin fails with
+`expected '1 May 2008' to be '2 May 2008'`.
 
 Verification rules that apply regardless:
 
