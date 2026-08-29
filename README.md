@@ -28,9 +28,15 @@ Universe, with three things a plain catalogue doesn't give you:
 
 ## Status
 
-Scaffolded and deploying, but there's no real content yet — the landing page is
-a placeholder that proves the build and deploy pipeline works. The features
-above are the plan, not the present.
+Scaffolded, styled and deploying — but there's no real content yet. The landing
+page proves the build and deploy pipeline works, and now carries the site's
+visual language. The features above are the plan, not the present.
+
+The look is an 80s Guardians-of-the-Galaxy space aesthetic: a deep indigo void,
+neon magenta and cyan, wide-tracked uppercase mono, a drifting starfield and a
+perspective grid horizon. Fonts are self-hosted and open-licence; no Marvel
+imagery is used anywhere. The palette and motifs are documented in
+[CLAUDE.md](CLAUDE.md#design-language-current).
 
 Built with [Astro](https://astro.build) and TypeScript. No server, no database:
 everything is resolved at build time into static files.

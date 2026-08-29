@@ -1,0 +1,221 @@
+/*
+ * Stones & Sagas — design tokens.
+ *
+ * The visual language is an 80s cosmic aesthetic: a deep indigo void, three
+ * neon accents, wide-tracked uppercase mono for anything machine-ish, and a
+ * starfield behind it all. Every colour, font stack and duration used anywhere
+ * on the site is named here. Components reference the tokens; they never write
+ * a literal colour or font stack of their own.
+ *
+ * Colours are oklch. It keeps the palette perceptually even — the three accents
+ * sit at the same lightness, so none of them shouts over the others — and it
+ * makes a lighter or darker variant an edit to one number rather than a guess.
+ * Every foreground token below was checked against --sas-void for WCAG AA;
+ * the lowest, --sas-text-dim, lands at 6.5:1.
+ */
+
+/* --- Fonts ------------------------------------------------------------- */
+/* Latin subsets, self-hosted from ./fonts. Relative paths, so Vite fingerprints
+   them and applies the /StonesAndSagas/ base at build time. See fonts/README.md. */
+
+@font-face {
+  font-family: 'Michroma';
+  src: url('./fonts/michroma-latin-400.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('./fonts/space-grotesk-latin-var.woff2') format('woff2-variations');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('./fonts/ibm-plex-mono-latin-400.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* --- Colour: ground -------------------------------------------------- */
+  --sas-void: oklch(0.14 0.04 285);
+  --sas-void-deep: oklch(0.10 0.03 285);
+  --sas-panel-top: oklch(0.24 0.04 285 / 0.7);
+  --sas-panel-bottom: oklch(0.17 0.03 285 / 0.45);
+
+  /* --- Colour: accents -------------------------------------------------- */
+  /* Magenta leads, cyan answers it on hover and links, amber is the third
+     voice — used sparingly, or it stops reading as an accent. */
+  --sas-magenta: oklch(0.70 0.18 350);
+  --sas-magenta-bright: oklch(0.86 0.13 350);
+  --sas-cyan: oklch(0.80 0.14 200);
+  --sas-cyan-bright: oklch(0.88 0.12 200);
+  --sas-amber: oklch(0.80 0.15 55);
+  --sas-violet: oklch(0.62 0.14 255);
+
+  /* --- Colour: text ----------------------------------------------------- */
+  --sas-text: oklch(0.94 0.01 285);
+  --sas-text-muted: oklch(0.78 0.02 285);
+  --sas-text-dim: oklch(0.66 0.02 285);
+
+  /* --- Colour: lines and glow ------------------------------------------- */
+  --sas-hairline: oklch(0.42 0.08 310 / 0.45);
+  --sas-hairline-warm: oklch(0.55 0.13 340 / 0.6);
+  --sas-hairline-cool: oklch(0.50 0.12 200 / 0.5);
+  --sas-glow-magenta: oklch(0.70 0.18 350 / 0.5);
+  --sas-glow-cyan: oklch(0.72 0.14 200 / 0.7);
+
+  /* --- Typography ------------------------------------------------------- */
+  --sas-font-display: 'Michroma', 'Space Grotesk', system-ui, sans-serif;
+  --sas-font-body: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --sas-font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', monospace;
+
+  /* Tracking. The mock's signature is very wide uppercase mono; these are the
+     three steps it actually uses, rather than a value invented per component. */
+  --sas-track-wide: 0.1em;
+  --sas-track-wider: 0.18em;
+  --sas-track-widest: 0.26em;
+
+  /* --- Spacing ---------------------------------------------------------- */
+  --sas-space-2xs: 0.375rem;
+  --sas-space-xs: 0.625rem;
+  --sas-space-sm: 1rem;
+  --sas-space-md: 1.625rem;
+  --sas-space-lg: 2.75rem;
+  --sas-space-xl: 4rem;
+  --sas-space-2xl: 6rem;
+
+  /* --- Layout ----------------------------------------------------------- */
+  --sas-measure: 1180px;
+  --sas-gutter: clamp(1.25rem, 4vw, 3rem);
+
+  /* --- Motion ----------------------------------------------------------- */
+  /* Durations are tokens so `prefers-reduced-motion` can zero the ambient ones
+     in a single place — see the block at the foot of this file. */
+  --sas-drift-duration: 240s;
+  --sas-pulse-duration: 3.2s;
+  --sas-horizon-duration: 6s;
+  --sas-transition: 220ms;
+}
+
+/* --- Ambient animations -------------------------------------------------- */
+/* Three keyframes carry the whole 80s-space feel: stars crawling, a status
+   light breathing, and the perspective grid scrolling toward the horizon. */
+
+@keyframes sas-drift {
+  from { background-position: 0 0, 0 0, 0 0; }
+  to { background-position: 400px 260px, -300px 180px, 120px -90px; }
+}
+
+@keyframes sas-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+@keyframes sas-horizon {
+  from { background-position: 0 0; }
+  to { background-position: 0 120px; }
+}
+
+/* --- Base elements ------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--sas-void);
+  color: var(--sas-text);
+  font-family: var(--sas-font-body);
+  line-height: 1.6;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+}
+
+a {
+  color: var(--sas-cyan);
+  text-decoration: none;
+  transition: color var(--sas-transition) ease;
+
+  &:hover {
+    color: var(--sas-magenta-bright);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--sas-cyan-bright);
+    outline-offset: 3px;
+  }
+}
+
+:where(h1, h2, h3, h4) {
+  text-wrap: balance;
+}
+
+:where(p) {
+  text-wrap: pretty;
+}
+
+/* --- Reusable pieces ----------------------------------------------------- */
+
+/* The mono metadata line: stamps, labels, telemetry. Uppercase and wide is the
+   whole look, so it is one class rather than four copies of the same rules. */
+.sas-stamp {
+  font-family: var(--sas-font-mono);
+  font-size: 0.6875rem;
+  font-weight: 400;
+  letter-spacing: var(--sas-track-wider);
+  text-transform: uppercase;
+  color: var(--sas-cyan);
+}
+
+/* Gradient-filled display text with a glow behind it. The fallback colour
+   matters: if background-clip: text is unsupported the text must still show. */
+.sas-glow-text {
+  color: var(--sas-magenta-bright);
+
+  @supports (background-clip: text) or (-webkit-background-clip: text) {
+    background: linear-gradient(
+      175deg,
+      var(--sas-text) 12%,
+      var(--sas-magenta-bright) 52%,
+      var(--sas-amber) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 0 26px var(--sas-glow-magenta));
+  }
+}
+
+/* --- Reduced motion ------------------------------------------------------ */
+/* The design runs the starfield, the status pulse and the grid horizon at the
+   same time. Anyone who has asked for less movement gets none of it: the
+   ambient loops stop outright, and interaction transitions collapse to
+   near-instant rather than being removed, so state changes stay perceptible. */
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --sas-transition: 1ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}

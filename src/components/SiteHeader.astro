@@ -1,0 +1,140 @@
+---
+/*
+ * Sticky header: the wordmark, and a telemetry pill borrowed from the design's
+ * "SIGNAL OK" badge.
+ *
+ * There is deliberately no navigation. The site is one page today, and a nav
+ * pointing at routes that do not exist is worse than no nav at all. Add the
+ * links when there is somewhere to go.
+ */
+
+interface Props {
+  /* What the telemetry pill reads. Kept honest — it reports the state of the
+     project, not decorative fake status. */
+  status: string;
+}
+
+const { status } = Astro.props;
+---
+
+<header class="site-header">
+  <a class="wordmark" href={import.meta.env.BASE_URL}>
+    <span class="wordmark-orb" aria-hidden="true"></span>
+    <span class="wordmark-text">
+      <span class="wordmark-name">Stones &amp; Sagas</span>
+      <span class="wordmark-sub">Unofficial MCU field guide</span>
+    </span>
+  </a>
+
+  <p class="telemetry">
+    <span class="telemetry-light" aria-hidden="true"></span>
+    <span>{status}</span>
+  </p>
+</header>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sas-space-md);
+    padding: var(--sas-space-sm) var(--sas-gutter);
+    background: color-mix(in oklab, var(--sas-void) 74%, transparent);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--sas-hairline);
+    box-shadow:
+      0 1px 0 oklch(0.70 0.18 350 / 0.18),
+      0 10px 40px -20px var(--sas-glow-magenta);
+  }
+
+  .wordmark {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    color: inherit;
+
+    &:hover .wordmark-name {
+      color: var(--sas-cyan-bright);
+    }
+  }
+
+  /* An abstract three-colour orb — self-made, and carrying no resemblance to
+     any studio mark. It is the whole palette in one 24px circle. */
+  .wordmark-orb {
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: linear-gradient(
+      160deg,
+      var(--sas-amber),
+      var(--sas-magenta) 55%,
+      var(--sas-violet)
+    );
+    box-shadow:
+      inset 0 0 0 4px var(--sas-void),
+      0 0 16px oklch(0.70 0.18 350 / 0.65);
+  }
+
+  .wordmark-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3125rem;
+    line-height: 1;
+  }
+
+  .wordmark-name {
+    font-family: var(--sas-font-display);
+    font-size: 0.8125rem;
+    letter-spacing: var(--sas-track-wide);
+    text-transform: uppercase;
+    color: var(--sas-text);
+    transition: color var(--sas-transition) ease;
+  }
+
+  .wordmark-sub {
+    font-family: var(--sas-font-mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--sas-cyan);
+  }
+
+  .telemetry {
+    display: flex;
+    align-items: center;
+    gap: var(--sas-space-xs);
+    flex: 0 0 auto;
+    margin: 0;
+    padding: var(--sas-space-2xs) 0.75rem;
+    border: 1px solid var(--sas-hairline-cool);
+    border-radius: 999px;
+    font-family: var(--sas-font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--sas-cyan);
+  }
+
+  .telemetry-light {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--sas-cyan);
+    box-shadow: 0 0 10px var(--sas-cyan);
+    animation: sas-pulse var(--sas-pulse-duration) ease-in-out infinite;
+  }
+
+  /* Below ~30rem the pill and the wordmark stop fitting side by side. The
+     wordmark wins; the pill drops to its own line rather than being truncated. */
+  @media (width < 30rem) {
+    .site-header {
+      flex-wrap: wrap;
+      gap: var(--sas-space-xs);
+    }
+  }
+</style>
