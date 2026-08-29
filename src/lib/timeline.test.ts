@@ -3,9 +3,12 @@ import { describe, expect, test } from 'vitest';
 import {
   byReleaseDate,
   byTimelineOrder,
+  characterAppearances,
   indexUnits,
   refKey,
+  referencesTo,
   resolveAppearances,
+  seriesCredits,
   toTimelineUnits,
   unitKey,
   type EpisodeLike,
@@ -233,5 +236,163 @@ describe('resolveAppearances', () => {
         'entities/westview',
       ),
     ).toThrow(/rather than a series/);
+  });
+});
+
+describe('referencesTo', () => {
+  const soulStone = {
+    id: 'soul-stone',
+    data: {
+      name: 'The Soul Stone',
+      appearances: [
+        { unit: { title: { id: 'iron-man' } }, type: 'mentioned' },
+        { unit: { episode: { id: 'wandavision-s01e01' } }, type: 'appears' },
+      ],
+    },
+  };
+  const hydra = {
+    id: 'hydra',
+    data: {
+      name: 'HYDRA',
+      appearances: [{ unit: { title: { id: 'iron-man' } }, type: 'appears' }],
+    },
+  };
+  const sources = [soulStone, hydra];
+
+  test('finds every source referencing one unit', () => {
+    const refs = referencesTo(unitKey('titles', 'iron-man'), sources);
+    expect(refs.map((r) => r.source.id)).toEqual(['hydra', 'soul-stone']);
+    expect(refs.map((r) => r.appearance.type)).toEqual(['appears', 'mentioned']);
+  });
+
+  test('does not confuse a title id with an episode id', () => {
+    const refs = referencesTo(unitKey('episodes', 'iron-man'), sources);
+    expect(refs).toEqual([]);
+  });
+
+  test('matches episodes', () => {
+    const refs = referencesTo(unitKey('episodes', 'wandavision-s01e01'), sources);
+    expect(refs.map((r) => r.source.id)).toEqual(['soul-stone']);
+  });
+
+  test('sorts by source name, not file order, so the output is stable', () => {
+    const refs = referencesTo(unitKey('titles', 'iron-man'), [...sources].reverse());
+    expect(refs.map((r) => r.source.data.name)).toEqual(['HYDRA', 'The Soul Stone']);
+  });
+});
+
+describe('characterAppearances', () => {
+  const castTitles = [
+    {
+      id: 'captain-america-the-first-avenger',
+      data: {
+        kind: 'film' as const,
+        cast: [
+          { character: { id: 'howard-stark' }, actor: { id: 'dominic-cooper' } },
+          { character: { id: 'steve-rogers' }, actor: { id: 'chris-evans' } },
+        ],
+      },
+    },
+    { id: 'iron-man', data: { kind: 'film' as const, cast: [] } },
+    {
+      id: 'wandavision',
+      data: {
+        kind: 'series' as const,
+        cast: [{ character: { id: 'vision' }, actor: { id: 'paul-bettany' } }],
+      },
+    },
+  ];
+  const castEpisodes = [
+    {
+      id: 'wandavision-s01e01',
+      data: {
+        cast: [{ character: { id: 'vision' }, actor: { id: 'paul-bettany' }, note: 'Voice' }],
+      },
+    },
+  ];
+
+  test('collects the titles and episodes a character was cast in', () => {
+    const rows = characterAppearances('howard-stark', [], castTitles, castEpisodes);
+    expect(rows).toEqual([
+      {
+        unit: { title: { id: 'captain-america-the-first-avenger' } },
+        type: 'appears',
+        actorId: 'dominic-cooper',
+        note: undefined,
+      },
+    ]);
+  });
+
+  test('keeps the casting note, which qualifies the performance', () => {
+    const rows = characterAppearances('vision', [], castTitles, castEpisodes);
+    expect(rows[0]!.note).toBe('Voice');
+    expect(rows[0]!.unit).toEqual({ episode: { id: 'wandavision-s01e01' } });
+  });
+
+  test('adds a mention in a title the character is not cast in', () => {
+    /* The case a cast list cannot express, and the reason characters carry
+       appearances at all. */
+    const rows = characterAppearances(
+      'howard-stark',
+      [{ unit: { title: { id: 'iron-man' } }, type: 'mentioned', scene: 'The company' }],
+      castTitles,
+      castEpisodes,
+    );
+    expect(rows).toHaveLength(2);
+    const mention = rows.find((r) => refKey(r.unit) === 'titles:iron-man')!;
+    expect(mention.type).toBe('mentioned');
+    expect(mention.actorId).toBeUndefined();
+  });
+
+  test('merges the two sides when they describe the same unit', () => {
+    const rows = characterAppearances(
+      'steve-rogers',
+      [
+        {
+          unit: { title: { id: 'captain-america-the-first-avenger' } },
+          type: 'created',
+          scene: 'The procedure',
+          note: 'Becomes Captain America here',
+        },
+      ],
+      castTitles,
+      castEpisodes,
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toEqual({
+      unit: { title: { id: 'captain-america-the-first-avenger' } },
+      type: 'created',
+      actorId: 'chris-evans',
+      scene: 'The procedure',
+      note: 'Becomes Captain America here',
+    });
+  });
+
+  test('a credit on a series is not a timeline row', () => {
+    /* A series is not a point in the chronology, so a regular's credit on one
+       cannot be placed. Vision is credited on WandaVision and cast in its first
+       episode; only the episode is a row. */
+    const rows = characterAppearances('vision', [], castTitles, castEpisodes);
+    expect(rows.map((r) => refKey(r.unit))).toEqual(['episodes:wandavision-s01e01']);
+  });
+
+  test('seriesCredits reports those separately instead of dropping them', () => {
+    expect(seriesCredits('vision', castTitles).map((t) => t.id)).toEqual(['wandavision']);
+    expect(seriesCredits('steve-rogers', castTitles)).toEqual([]);
+  });
+
+  test('a title id and an episode id that match do not collide', () => {
+    const rows = characterAppearances(
+      'x',
+      [],
+      [
+        {
+          id: 'same',
+          data: { kind: 'film' as const, cast: [{ character: { id: 'x' }, actor: { id: 'a' } }] },
+        },
+      ],
+      [{ id: 'same', data: { cast: [{ character: { id: 'x' }, actor: { id: 'b' } }] } }],
+    );
+    expect(rows).toHaveLength(2);
   });
 });

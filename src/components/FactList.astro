@@ -1,0 +1,80 @@
+---
+/*
+ * The dotted-leader metadata block from the design: a label, a run of dots, a
+ * value. Used down the side of every detail page.
+ *
+ * Values can be links, so each row takes either a string or a slot's worth of
+ * markup via the `html` escape hatch below — kept to strings here, with pages
+ * rendering their own list when they need links, rather than inventing a
+ * component that takes markup as data.
+ */
+
+interface Props {
+  heading?: string;
+  facts: { label: string; value: string }[];
+}
+
+const { heading, facts } = Astro.props;
+---
+
+<div class="facts sas-panel">
+  {heading && <p class="heading">{heading}</p>}
+  <dl>
+    {
+      facts.map((fact) => (
+        <div class="fact">
+          <dt>{fact.label}</dt>
+          <span class="leader" aria-hidden="true" />
+          <dd>{fact.value}</dd>
+        </div>
+      ))
+    }
+  </dl>
+</div>
+
+<style>
+  .heading {
+    margin: 0 0 var(--sas-space-sm);
+    font-family: var(--sas-font-mono);
+    font-size: 0.625rem;
+    letter-spacing: var(--sas-track-widest);
+    text-transform: uppercase;
+    color: var(--sas-accent-bright, var(--sas-magenta-bright));
+  }
+
+  dl {
+    margin: 0;
+  }
+
+  .fact {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 0.5em;
+    align-items: baseline;
+    padding: 0.4rem 0;
+    font-family: var(--sas-font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--sas-track-wide);
+    text-transform: uppercase;
+  }
+
+  dt {
+    color: var(--sas-text-dim);
+  }
+
+  /* The run of dots. A repeating gradient rather than a border, so it stays
+     dotted at any width without the browser rounding it into a dash. */
+  .leader {
+    height: 1px;
+    transform: translateY(-0.2em);
+    background-image: radial-gradient(circle, var(--sas-hairline) 0.5px, transparent 0.6px);
+    background-size: 5px 1px;
+    background-repeat: repeat-x;
+  }
+
+  dd {
+    margin: 0;
+    color: var(--sas-text);
+    text-align: right;
+  }
+</style>

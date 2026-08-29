@@ -20,11 +20,13 @@ because `&` is awkward in a URL. Use the right form for the context:
 Never render the site name to a visitor as "StonesAndSagas". In HTML, write the
 ampersand as `&amp;` where the context requires escaping.
 
-## Status: styled scaffold with a content model, seed content only [current]
+## Status: the catalogue renders, on seed content [current]
 
-The project is scaffolded, styled and deploys. The content model exists and is
-enforced at build time; what it holds is a **small seed set proving the schema**,
-not a catalogue. Tracked contents:
+The project is scaffolded, styled, tested and deploys, and the content model is
+now rendered: timeline, titles, episodes, threads, characters and reading all
+have pages. What the catalogue *holds* is still a **small seed set proving the
+schema** — four titles, two episodes, nine threads, four printed works. The
+machinery is built; the content is not. Tracked contents:
 
 ```
 .
@@ -35,10 +37,17 @@ not a catalogue. Tracked contents:
 │   └── favicon.svg      # self-made abstract mark, no Marvel imagery
 ├── src/
 │   ├── components/
+│   │   ├── CardGrid.astro        # the grid every index lays cards on
 │   │   ├── CosmicBackdrop.astro  # starfield + CRT scanline layers
-│   │   ├── FeatureCard.astro     # card with a procedural "plate" image
+│   │   ├── EntryCard.astro       # linked card for any index
+│   │   ├── FactList.astro        # dotted-leader metadata panel
+│   │   ├── FeatureCard.astro     # landing-page feature card
+│   │   ├── PageIntro.astro       # stamp + title + lede, on every index
+│   │   ├── Plate.astro           # the procedural stand-in for artwork
 │   │   ├── SiteFooter.astro      # carries the fan-project disclaimer
-│   │   └── SiteHeader.astro      # sticky wordmark + telemetry pill
+│   │   ├── SiteHeader.astro      # sticky wordmark, nav + telemetry pill
+│   │   ├── TimelineList.astro    # <ol> for chronologies
+│   │   └── TimelineRow.astro     # one row on any chronology
 │   ├── content/         # the catalogue itself
 │   │   ├── characters/  # one .md per character
 │   │   ├── entities/    # one .md per object, place, reality, group, event
@@ -49,8 +58,18 @@ not a catalogue. Tracked contents:
 │   ├── content.config.ts  # collection definitions + Zod schemas
 │   ├── layouts/
 │   │   └── Base.astro   # shared page shell
+│   ├── lib/             # the logic, with its tests beside it
+│   │   ├── format.ts    # dates, runtimes, labels for every schema enum
+│   │   ├── href.ts      # base-path-safe internal links
+│   │   └── timeline.ts  # ordering, appearance resolution, reverse lookup
 │   ├── pages/
-│   │   └── index.astro  # landing page — styled, still content-free
+│   │   ├── characters/  # index + one page per character
+│   │   ├── episodes/    # one page per episode
+│   │   ├── reading/     # index + one page per printed work
+│   │   ├── threads/     # index + one page per entity — the headline feature
+│   │   ├── titles/      # index in release order + one page per title
+│   │   ├── index.astro  # landing page
+│   │   └── timeline.astro  # in-universe order
 │   └── styles/
 │       ├── fonts/       # self-hosted woff2 subsets + OFL licence
 │       └── theme.css    # design tokens and base elements
@@ -58,13 +77,14 @@ not a catalogue. Tracked contents:
 ├── package.json
 ├── package-lock.json
 ├── tsconfig.json
+├── vitest.config.ts
 ├── LICENSE
 ├── README.md
 └── CLAUDE.md
 ```
 
-Not built yet: a real catalogue, cross-reference records, and every page beyond
-the landing page — nothing yet renders the content collections.
+Not built yet: a real catalogue. Also absent by choice — search, filtering and
+pagination, none of which six titles need.
 
 Section tags below tell you how much to trust each one:
 
@@ -298,6 +318,21 @@ must switch all of them off** — the design runs several at once, which is a lo
 for anyone who has asked for less. The global block at the foot of `theme.css`
 handles this; do not add an animation that escapes it.
 
+### Shared pieces [current]
+
+Four things exist so components stop repeating themselves. Reach for these
+before writing new CSS:
+
+- **`data-accent`** on any element sets `--sas-accent` and `--sas-accent-bright`
+  from the three text-safe accents. Components reference those, never the mapping.
+- **`.sas-panel`** is the bordered, faintly gradient-filled box, with the accent
+  on its left edge.
+- **`.sas-prose`** wraps rendered Markdown bodies, measured at 66ch — prose is the
+  only thing on the site read continuously, and a 1180px line is not readable.
+- **`Plate.astro`** is the plate, in one place now that cards, title heroes and
+  episode heroes all want one. It also renders a licensed image when a title has
+  one, keeping the plate behind it so a blocked image degrades to the design.
+
 ### Images, and why there mostly aren't any
 
 The mock puts a poster or a film still in every card. **We cannot ship those** —
@@ -307,6 +342,50 @@ to an accent colour, as in `FeatureCard.astro`. Self-made by construction,
 weighs nothing, and holds the composition the design wants. Prefer a plate over
 hunting for a "safe" image. Avoid hard full-width edges in one — they read as a
 progress bar rather than as light.
+
+## The site itself [current]
+
+Eleven routes, all static, all rendered from the collections:
+
+| Route | Shows |
+| --- | --- |
+| `/` | landing page |
+| `/timeline` | every film, short and episode in in-universe order |
+| `/titles`, `/titles/[id]` | the catalogue in **release** order, and one title |
+| `/episodes/[id]` | one episode |
+| `/threads`, `/threads/[id]` | entities, and every appearance of one, in order |
+| `/characters`, `/characters/[id]` | characters, and one across screen and print |
+| `/reading`, `/reading/[id]` | printed works, and one with its relations |
+
+Conventions worth keeping to:
+
+- **Two orderings, two pages, no JavaScript.** Release order and in-universe
+  order are `/titles` and `/timeline` rather than one page with a toggle. A
+  toggle means shipping a client-side island for something two static pages do
+  better, on a site whose stated advantage is zero JS by default. Nothing on the
+  site ships any JavaScript today; keep it that way unless a feature genuinely
+  needs it.
+- **`/threads`, not `/entities`.** `entities` is the schema's word; *thread* is
+  the product's, and the one a visitor might type.
+- **Every internal link goes through `href()`** in `src/lib/href.ts`. A literal
+  `/titles/iron-man` resolves above the Pages base path and 404s in production
+  while working perfectly in dev — the worst shape a bug can take. There is one
+  join, and it is tested.
+- **Logic lives in `src/lib`, not in a page.** If a template starts sorting,
+  merging or resolving, it belongs in a module with tests. The three page-level
+  things worth knowing: appearances are resolved through `resolveAppearances`,
+  the reverse view ("what does this film reference") through `referencesTo`, and
+  a character's merged screen history through `characterAppearances`.
+- **A page throwing is the reference check.** `resolveAppearances` throws on a
+  pointer that resolves to nothing, which is what turns Astro's exit-0 warning
+  (see the caveat below) into a failed build for anything a page renders. It
+  also catches what the schema cannot express: an appearance pointing at a
+  series rather than a timeline unit. Do not soften it to a skipped row.
+- **A series credit is not a timeline row.** A series carries a cast list — the
+  regulars — but "is on this show" is not a moment. `characterAppearances`
+  excludes them and `seriesCredits` reports them separately; the character's
+  episode credits supply the actual positions. Expanding a regular across every
+  episode would invent appearances the data does not support.
 
 ## Content and data model [current, except cross-references]
 
@@ -551,8 +630,8 @@ no staging step, so treat `main` as production.
 
 Workflows live in `.github/workflows/`:
 
-- **`ci.yml`** — on pull requests: `npm ci`, `npm run check`, `npm run build`.
-  A PR that doesn't build should not be mergeable.
+- **`ci.yml`** — on pull requests: `npm ci`, `npm run check`, `npm test`,
+  `npm run build`. A PR that doesn't build should not be mergeable.
 - **`deploy.yml`** — on push to `main`: builds, uploads the Pages artifact and
   deploys. Carries `permissions: { contents: read, pages: write, id-token: write }`
   and a `pages` concurrency group with `cancel-in-progress: false`, so a running

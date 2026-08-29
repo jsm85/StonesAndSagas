@@ -1,0 +1,65 @@
+---
+import { getCollection } from 'astro:content';
+
+import Base from '../../layouts/Base.astro';
+import PageIntro from '../../components/PageIntro.astro';
+import CardGrid from '../../components/CardGrid.astro';
+import EntryCard from '../../components/EntryCard.astro';
+import { formatCoverDate, READING_KINDS } from '../../lib/format';
+import { href } from '../../lib/href';
+
+const reading = (await getCollection('reading')).sort((a, b) =>
+  a.data.published.localeCompare(b.data.published),
+);
+
+const accents = { issue: 'magenta', collection: 'cyan', book: 'amber' } as const;
+---
+
+<Base
+  title="Reading"
+  status="Phase 01 · Catalogue"
+  description="Comics, collected editions and books worth reading alongside the films and series, in publication order."
+>
+  <PageIntro
+    stamp="Recommended reading"
+    title="What to read alongside"
+    lede="Comics, collected editions and prose books, each carrying what it is to the titles it relates to — the story a film adapts, the issue a character first appeared in, or simply useful background."
+  />
+
+  <CardGrid>
+    {
+      reading.map((work) => (
+        <EntryCard
+          href={href(`reading/${work.id}`)}
+          label={READING_KINDS[work.data.kind]}
+          title={work.data.title}
+          summary={work.data.summary}
+          accent={accents[work.data.kind]}
+          plate={false}
+          meta={[
+            formatCoverDate(work.data.published),
+            ...(work.data.kind === 'issue'
+              ? [`${work.data.series} #${work.data.issueNumber}`]
+              : []),
+            ...(work.data.publisher ? [work.data.publisher] : []),
+          ]}
+        />
+      ))
+    }
+  </CardGrid>
+
+  <p class="footnote">
+    No covers, here or anywhere: cover art and solicitation copy belong to their
+    publishers, so entries link out to an official source instead. Titles, issue
+    numbers and credits are facts, and those we keep.
+  </p>
+</Base>
+
+<style>
+  .footnote {
+    margin: var(--sas-space-lg) 0 0;
+    max-width: 62ch;
+    font-size: 0.9375rem;
+    color: var(--sas-text-dim);
+  }
+</style>

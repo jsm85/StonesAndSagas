@@ -1,0 +1,58 @@
+---
+import { getCollection } from 'astro:content';
+
+import Base from '../../layouts/Base.astro';
+import PageIntro from '../../components/PageIntro.astro';
+import CardGrid from '../../components/CardGrid.astro';
+import EntryCard from '../../components/EntryCard.astro';
+import { href } from '../../lib/href';
+import { characterAppearances } from '../../lib/timeline';
+
+const characters = (await getCollection('characters')).sort((a, b) =>
+  a.data.name.localeCompare(b.data.name),
+);
+const titles = await getCollection('titles');
+const episodes = await getCollection('episodes');
+const reading = await getCollection('reading');
+
+/* The count on each card is the merged one — cast credits and mentions
+   together — so it matches what the character's own page lists. */
+const rows = characters.map((character) => {
+  const screen = characterAppearances(character.id, character.data.appearances, titles, episodes);
+  const print = reading.filter((work) =>
+    work.data.characters.some((entry) => entry.id === character.id),
+  ).length;
+  return { character, screen: screen.length, print };
+});
+---
+
+<Base
+  title="Characters"
+  status="Phase 01 · Catalogue"
+  description="The characters in the catalogue, each gathering their appearances across film, television and print."
+>
+  <PageIntro
+    stamp="Who's who"
+    title="Characters, across every medium"
+    lede="Each character is one entry that films, episodes and comics all point at, so a page can gather appearances from all three — including the titles that only mention them."
+  />
+
+  <CardGrid>
+    {
+      rows.map(({ character, screen, print }) => (
+        <EntryCard
+          href={href(`characters/${character.id}`)}
+          label={character.data.aka[0] ?? 'Character'}
+          title={character.data.name}
+          summary={character.data.summary}
+          accent="cyan"
+          plate={false}
+          meta={[
+            screen === 1 ? '1 on screen' : `${screen} on screen`,
+            ...(print > 0 ? [print === 1 ? '1 in print' : `${print} in print`] : []),
+          ]}
+        />
+      ))
+    }
+  </CardGrid>
+</Base>

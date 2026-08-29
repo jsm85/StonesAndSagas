@@ -1,0 +1,79 @@
+---
+/*
+ * The catalogue in release order — the second of the two orderings.
+ *
+ * Release order and in-universe order are two pages rather than one page with a
+ * toggle: a toggle means shipping a client-side island for something two static
+ * pages do better.
+ */
+
+import { getCollection } from 'astro:content';
+
+import Base from '../../layouts/Base.astro';
+import PageIntro from '../../components/PageIntro.astro';
+import CardGrid from '../../components/CardGrid.astro';
+import EntryCard from '../../components/EntryCard.astro';
+import { formatRuntime, formatYear, TITLE_KINDS } from '../../lib/format';
+import { href } from '../../lib/href';
+
+const titles = await getCollection('titles');
+
+/* A series has no release date of its own — it has a run — so sorting the three
+   kinds together means asking each for the day it started. */
+const startedOn = (title: (typeof titles)[number]) =>
+  title.data.kind === 'series' ? title.data.firstAired : title.data.releaseDate;
+
+const sorted = [...titles].sort(
+  (a, b) =>
+    startedOn(a).getTime() - startedOn(b).getTime() ||
+    a.data.title.localeCompare(b.data.title),
+);
+
+const metaFor = (title: (typeof titles)[number]) =>
+  title.data.kind === 'series'
+    ? [formatYear(title.data.firstAired), 'Episodes carry the timeline']
+    : [formatYear(title.data.releaseDate), formatRuntime(title.data.runtimeMinutes)];
+---
+
+<Base
+  title="Titles"
+  status="Phase 01 · Catalogue"
+  description="Every MCU film, TV series and short in the catalogue, in the order they were released."
+>
+  <PageIntro
+    stamp="Release order"
+    title="Everything, as it arrived"
+    lede="Films, series and shorts in the order they reached us. For the order the events happen in, which is a different list, see the timeline."
+  />
+
+  <CardGrid>
+    {
+      sorted.map((title) => (
+        <EntryCard
+          href={href(`titles/${title.id}`)}
+          label={TITLE_KINDS[title.data.kind]}
+          title={title.data.title}
+          summary={title.data.summary}
+          accent={title.data.accent}
+          meta={metaFor(title)}
+          image={title.data.images.poster}
+        />
+      ))
+    }
+  </CardGrid>
+
+  <p class="footnote">
+    A seed set proving the content model, not a catalogue.
+    <a href={href('timeline')}>The timeline</a> orders the same material by when
+    it happens.
+  </p>
+</Base>
+
+<style>
+  .footnote {
+    margin: var(--sas-space-lg) 0 0;
+    max-width: 62ch;
+    font-size: 0.9375rem;
+    color: var(--sas-text-dim);
+  }
+</style>

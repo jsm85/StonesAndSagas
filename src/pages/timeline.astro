@@ -1,0 +1,72 @@
+---
+/*
+ * The in-universe chronology: every film, short and episode in the order the
+ * events happen, rather than the order they were released.
+ *
+ * This is the page the content model was shaped around. A series does not
+ * appear — its episodes do, each in its own place, interleaved with the films
+ * around them.
+ */
+
+import { getCollection } from 'astro:content';
+
+import Base from '../layouts/Base.astro';
+import PageIntro from '../components/PageIntro.astro';
+import TimelineList from '../components/TimelineList.astro';
+import TimelineRow from '../components/TimelineRow.astro';
+import { byTimelineOrder, toTimelineUnits } from '../lib/timeline';
+import { formatEpisodeCode, formatYear, UNIT_KINDS } from '../lib/format';
+import { href } from '../lib/href';
+
+const units = toTimelineUnits(
+  await getCollection('titles'),
+  await getCollection('episodes'),
+).sort(byTimelineOrder);
+---
+
+<Base
+  title="Timeline"
+  status="Phase 01 · Catalogue"
+  description="Every MCU film, short and TV episode in in-universe chronological order, with television episodes interleaved with the films around them."
+>
+  <PageIntro
+    stamp="In-universe order"
+    title="The order it actually happened"
+    lede="Films, shorts and episodes on one line of travel. A series is not a single point in the chronology — its episodes each take their own place, which is why a season can sit between two films rather than after them."
+  />
+
+  <TimelineList>
+    {
+      units.map((unit) => (
+        <TimelineRow
+          href={href(`${unit.collection}/${unit.id}`)}
+          name={unit.name}
+          kind={UNIT_KINDS[unit.kind]}
+          accent={unit.accent}
+          context={
+            unit.series
+              ? `${unit.series.name} · ${formatEpisodeCode(unit.series.season, unit.series.episode)}`
+              : undefined
+          }
+          setting={unit.setting}
+          year={formatYear(unit.releaseDate)}
+        />
+      ))
+    }
+  </TimelineList>
+
+  <p class="footnote">
+    The right-hand column is the release year — the other ordering, kept in view
+    so the disagreement between the two is visible rather than asserted. The same
+    catalogue is also listed <a href={href('titles')}>in release order</a>.
+  </p>
+</Base>
+
+<style>
+  .footnote {
+    margin: var(--sas-space-lg) 0 0;
+    max-width: 62ch;
+    font-size: 0.9375rem;
+    color: var(--sas-text-dim);
+  }
+</style>

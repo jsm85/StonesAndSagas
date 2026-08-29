@@ -167,6 +167,27 @@ a {
   text-wrap: pretty;
 }
 
+/* --- Accents ------------------------------------------------------------- */
+/* Anything carrying data-accent gets the pair of variables its children draw
+   with, so a component references --sas-accent and never repeats this mapping.
+   Amber has no separate bright step — it is already the lightest of the three,
+   and inventing one would push it out of the palette's even lightness. */
+
+[data-accent='magenta'] {
+  --sas-accent: var(--sas-magenta);
+  --sas-accent-bright: var(--sas-magenta-bright);
+}
+
+[data-accent='cyan'] {
+  --sas-accent: var(--sas-cyan);
+  --sas-accent-bright: var(--sas-cyan-bright);
+}
+
+[data-accent='amber'] {
+  --sas-accent: var(--sas-amber);
+  --sas-accent-bright: var(--sas-amber);
+}
+
 /* --- Reusable pieces ----------------------------------------------------- */
 
 /* The mono metadata line: stamps, labels, telemetry. Uppercase and wide is the
@@ -178,6 +199,36 @@ a {
   letter-spacing: var(--sas-track-wider);
   text-transform: uppercase;
   color: var(--sas-cyan);
+}
+
+/* Rendered Markdown bodies — the plot of a film, the description of a stone.
+   Measured rather than full-width: prose is the one thing on the site that is
+   read continuously, and a 1180px line is not readable. */
+.sas-prose {
+  max-width: 66ch;
+  color: var(--sas-text-muted);
+
+  & :where(p) {
+    margin: 0 0 1.1em;
+  }
+
+  & :where(p:last-child) {
+    margin-bottom: 0;
+  }
+
+  & :where(a) {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+  }
+}
+
+/* A panel: the bordered, faintly gradient-filled box the design uses for
+   anything set apart from the page — sidebars, credit blocks, cards. */
+.sas-panel {
+  border: 1px solid var(--sas-hairline);
+  border-left: 2px solid var(--sas-accent, var(--sas-magenta));
+  background: linear-gradient(180deg, var(--sas-panel-top), var(--sas-panel-bottom));
+  padding: var(--sas-space-md);
 }
 
 /* Gradient-filled display text with a glow behind it. The fallback colour

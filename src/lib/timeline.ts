@@ -16,23 +16,30 @@ export type Accent = 'magenta' | 'cyan' | 'amber';
 
 /* --- Inputs --------------------------------------------------------------- */
 
-export interface SelfContainedTitleLike {
-  id: string;
-  data: {
-    kind: 'film' | 'short';
-    title: string;
-    accent: Accent;
-    releaseDate: Date;
-    timeline: { order: number; setting?: string };
-  };
+/*
+ * Note the shape: one object whose `data` is a union, rather than a union of
+ * objects. That is how Astro types a collection built on a discriminated union
+ * — `CollectionEntry<'titles'>` is `{ id, collection, data: A | B | C }` — and
+ * an input type shaped the other way round will not accept a real entry.
+ */
+export interface SelfContainedTitleData {
+  kind: 'film' | 'short';
+  title: string;
+  accent: Accent;
+  releaseDate: Date;
+  timeline: { order: number; setting?: string };
 }
 
-export interface SeriesTitleLike {
-  id: string;
-  data: { kind: 'series'; title: string; accent: Accent };
+export interface SeriesTitleData {
+  kind: 'series';
+  title: string;
+  accent: Accent;
 }
 
-export type TitleLike = SelfContainedTitleLike | SeriesTitleLike;
+export interface TitleLike {
+  id: string;
+  data: SelfContainedTitleData | SeriesTitleData;
+}
 
 export interface EpisodeLike {
   id: string;
@@ -68,8 +75,9 @@ export interface TimelineUnit {
   series?: { id: string; name: string; season: number; episode: number };
 }
 
-const isSelfContained = (t: TitleLike): t is SelfContainedTitleLike =>
-  t.data.kind !== 'series';
+const isSelfContained = (
+  title: TitleLike,
+): title is TitleLike & { data: SelfContainedTitleData } => title.data.kind !== 'series';
 
 /*
  * Flatten films, shorts and episodes into one list of timeline units.
@@ -202,4 +210,146 @@ export function resolveAppearances<A extends AppearanceLike>(
   });
 
   return resolved.sort((a, b) => byTimelineOrder(a.unit, b.unit));
+}
+
+/*
+ * The reverse question: what refers to this unit?
+ *
+ * Threads are authored entity-first — "every appearance of the Soul Stone" is
+ * one file — so the view a title page needs, "everything referenced in this
+ * film", is a scan. That is the trade the model makes deliberately, and at this
+ * size a scan over every entity and character costs nothing.
+ */
+export interface ReferenceSourceLike<A extends AppearanceLike = AppearanceLike> {
+  id: string;
+  data: { name: string; appearances: A[] };
+}
+
+export interface Reference<
+  A extends AppearanceLike = AppearanceLike,
+  S extends ReferenceSourceLike<A> = ReferenceSourceLike<A>,
+> {
+  source: S;
+  appearance: A;
+}
+
+export function referencesTo<A extends AppearanceLike, S extends ReferenceSourceLike<A>>(
+  key: string,
+  sources: S[],
+): Reference<A, S>[] {
+  const found: Reference<A, S>[] = [];
+  for (const source of sources) {
+    for (const appearance of source.data.appearances) {
+      if (refKey(appearance.unit) === key) found.push({ source, appearance });
+    }
+  }
+  /* Alphabetical: there is no meaningful order among the things one film
+     references, and a stable one keeps the built HTML diffable. */
+  return found.sort((a, b) => a.source.data.name.localeCompare(b.source.data.name));
+}
+
+/* --- Characters ----------------------------------------------------------- */
+
+/*
+ * A character is present in two different ways, and a page has to show both as
+ * one list.
+ *
+ * Cast records who *played* them, and lives on the title. Appearances record
+ * references, and live on the character — most usefully a mention in a title
+ * they never appear in, which a cast list cannot express. Where both describe
+ * the same unit they are one row, not two: the cast side contributes the actor,
+ * the authored side contributes the scene, the note and the more specific type.
+ */
+export interface CastMemberLike {
+  character: { id: string };
+  actor: { id: string };
+  note?: string;
+}
+
+export interface CastCarrierLike {
+  id: string;
+  data: { cast: CastMemberLike[] };
+}
+
+/*
+ * A title's cast, plus the kind that decides whether it can be a timeline row.
+ *
+ * A series carries a cast list — the regulars — but a series is not a point in
+ * the chronology, so a credit on one cannot be placed on a timeline. Those are
+ * reported separately by `seriesCredits` rather than dropped silently or, worse,
+ * expanded across every episode: a regular is not in every episode, and
+ * inventing appearances would be a lie the data does not support.
+ */
+export interface TitleCastLike extends CastCarrierLike {
+  data: { kind: 'film' | 'short' | 'series'; cast: CastMemberLike[] };
+}
+
+export interface CharacterRow {
+  unit: UnitRef;
+  type: string;
+  /* Set when the character was cast in this unit rather than only referred to. */
+  actorId?: string;
+  scene?: string;
+  note?: string;
+}
+
+export function characterAppearances(
+  characterId: string,
+  authored: AppearanceLike[],
+  titles: TitleCastLike[],
+  episodes: CastCarrierLike[],
+): CharacterRow[] {
+  const rows = new Map<string, CharacterRow>();
+
+  const addCast = (carriers: CastCarrierLike[], toRef: (id: string) => UnitRef) => {
+    for (const carrier of carriers) {
+      for (const member of carrier.data.cast) {
+        if (member.character.id !== characterId) continue;
+        const unit = toRef(carrier.id);
+        rows.set(refKey(unit), {
+          unit,
+          type: 'appears',
+          actorId: member.actor.id,
+          note: member.note,
+        });
+      }
+    }
+  };
+
+  addCast(
+    titles.filter((title) => title.data.kind !== 'series'),
+    (id) => ({ title: { id } }),
+  );
+  addCast(episodes, (id) => ({ episode: { id } }));
+
+  for (const appearance of authored) {
+    const key = refKey(appearance.unit);
+    const existing = rows.get(key);
+    rows.set(key, {
+      unit: appearance.unit,
+      type: appearance.type,
+      actorId: existing?.actorId,
+      scene: appearance.scene,
+      note: appearance.note ?? existing?.note,
+    });
+  }
+
+  return [...rows.values()];
+}
+
+/*
+ * The series a character is a credited regular on.
+ *
+ * Shown as its own line rather than as timeline rows, because "is in this show"
+ * is not a moment. The character's episode credits supply the actual positions.
+ */
+export function seriesCredits<T extends TitleCastLike>(
+  characterId: string,
+  titles: T[],
+): T[] {
+  return titles.filter(
+    (title) =>
+      title.data.kind === 'series' &&
+      title.data.cast.some((member) => member.character.id === characterId),
+  );
 }
