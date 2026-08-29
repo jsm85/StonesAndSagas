@@ -20,10 +20,11 @@ because `&` is awkward in a URL. Use the right form for the context:
 Never render the site name to a visitor as "StonesAndSagas". In HTML, write the
 ampersand as `&amp;` where the context requires escaping.
 
-## Status: styled scaffold, no content yet [current]
+## Status: styled scaffold with a content model, seed content only [current]
 
-The project is scaffolded, styled and deploys, but carries **no real content**.
-Tracked contents:
+The project is scaffolded, styled and deploys. The content model exists and is
+enforced at build time; what it holds is a **small seed set proving the schema**,
+not a catalogue. Tracked contents:
 
 ```
 .
@@ -38,6 +39,12 @@ Tracked contents:
 │   │   ├── FeatureCard.astro     # card with a procedural "plate" image
 │   │   ├── SiteFooter.astro      # carries the fan-project disclaimer
 │   │   └── SiteHeader.astro      # sticky wordmark + telemetry pill
+│   ├── content/         # the catalogue itself
+│   │   ├── characters/  # one .md per character
+│   │   ├── episodes/    # one .md per episode — a timeline unit
+│   │   ├── titles/      # one .md per film, series or short
+│   │   └── people.json  # flat lookup: directors, creators, actors
+│   ├── content.config.ts  # collection definitions + Zod schemas
 │   ├── layouts/
 │   │   └── Base.astro   # shared page shell
 │   ├── pages/
@@ -54,8 +61,8 @@ Tracked contents:
 └── CLAUDE.md
 ```
 
-Not built yet: content collections, Zod schemas, real content, and every page
-beyond the landing page.
+Not built yet: a real catalogue, cross-reference records, and every page beyond
+the landing page — nothing yet renders the content collections.
 
 Section tags below tell you how much to trust each one:
 
@@ -106,7 +113,7 @@ naming a collection `films` is a rename waiting to happen. Three kinds:
 **This shapes the data model, so read it before designing any schema.** The
 cross-reference feature is not a view-layer concern. A flat per-title record
 cannot answer "every scene referencing the Soul Stone in timeline order". See
-[Content and data model](#content-and-data-model-decided--not-yet-implemented)
+[Content and data model](#content-and-data-model-current-except-cross-references)
 for what that requires.
 
 Also note for the [IP rules](#fan-content-and-ip-rules-hard-rule): the
@@ -204,8 +211,8 @@ src/
   pages/          # routes
   layouts/        # shared page shells
   components/     #
-  content/        # content collections         (not yet created)
-  content.config.ts  # Zod schemas              (not yet created)
+  content/        # content collections
+  content.config.ts  # Zod schemas
   styles/         # theme.css tokens + fonts/
 public/           # static assets copied verbatim
 .github/workflows/
@@ -297,7 +304,7 @@ weighs nothing, and holds the composition the design wants. Prefer a plate over
 hunting for a "safe" image. Avoid hard full-width edges in one — they read as a
 progress bar rather than as light.
 
-## Content and data model [decided — not yet implemented]
+## Content and data model [current, except cross-references]
 
 No database and no runtime API: **all content ships with the build.**
 
@@ -336,12 +343,81 @@ schema from day one:
   from the former. Episodes need their own in-universe position, not just their
   series'.
 - **Reference integrity belongs in the schema.** Use Zod's `reference()` so a
-  pointer to a stone that doesn't exist fails the build. This is the concrete
-  reason the core content is frontmatter and not CSV: a dead cross-reference
-  should be a build error, not a broken link discovered in production.
+  pointer to a stone that doesn't exist is caught rather than shipped. This is
+  the concrete reason the core content is frontmatter and not CSV: a dead
+  cross-reference should surface at build time, not as a broken link in
+  production. **But see the caveat below — it does not currently fail the
+  build.**
 
 Flat, genuinely tabular side data (a lookup of release dates, say) can still be
 CSV or JSON. The relational core cannot.
+
+### What exists today [current]
+
+`src/content.config.ts` defines four collections. `titles` is a Zod
+**discriminated union on `kind`**, so the three kinds differ structurally rather
+than by convention:
+
+| Collection | Loader | Holds |
+| --- | --- | --- |
+| `titles` | `glob` over `src/content/titles` | films, series, shorts |
+| `episodes` | `glob` over `src/content/episodes` | one entry per episode |
+| `people` | `file` over `src/content/people.json` | directors, creators, actors |
+| `characters` | `glob` over `src/content/characters` | in-universe characters |
+
+Decisions worth knowing before you extend it:
+
+- **A series carries no `timeline` and no `runtimeMinutes`.** Those fields are
+  not merely unset on a series — the union rejects them, because a series is not
+  a point in the chronology. Its episodes are, and each carries its own
+  `timeline.order`. Sorting films, shorts and episodes together by that key is
+  what interleaves a season with the films around it.
+- **`timeline.order` is a bare sort key, not a date.** In-universe time is vague
+  and occasionally circular; a number only has to compare correctly. Seed values
+  are spaced in hundreds so a title can be inserted without renumbering.
+- **Every schema is a `strictObject`.** Zod's default is to *strip* unknown keys,
+  which would silently swallow a misspelled field name. Strict turns that into a
+  build failure — verified: `runtimeMins` fails with `Unrecognized key`.
+- **Cast is `{ character, actor }` reference pairs in the title's frontmatter**,
+  not a separate `castings` collection. A character's filmography is derived by
+  scanning titles. Revisit if per-episode cast overrides get unwieldy.
+- **Certification is a discriminated union over rating systems** (`bbfc`, `mpa`,
+  `us-tv`), each with its own enumerated ratings, so `PG-13` under `bbfc` fails.
+- **Imagery is links, never files.** `poster`, `banner` and `stills` each hold an
+  absolute URL plus the official `source` page and `alt` text. Nothing is
+  committed — see the [IP rules](#fan-content-and-ip-rules-hard-rule). Seed
+  content ships none at all; a title with no imagery renders the accent-keyed
+  plate, which is the expected case rather than a fallback.
+- **Prose lives in the Markdown body**, with a one-or-two-sentence `summary` in
+  frontmatter for cards.
+- `import { z } from 'astro/zod'`, not from `astro:content` — the latter is
+  deprecated and goes in Astro 8. Astro 7 ships Zod 4, where `.default()` takes
+  the **output** value: `imagery.default({ stills: [] })`, not `{}`.
+
+Not built: cross-reference records (stones, objects, events) and the entities
+they point at beyond `characters`. The model above is shaped to take them — they
+point at a film, a short or an episode — but nothing is written yet.
+
+### Caveat: a dead reference does not fail the build [current]
+
+Verified against Astro 7.2: a `reference()` pointing at an entry that does not
+exist logs
+
+```
+[ERROR] [content] Invalid content reference: entry "iron-man" in collection
+"titles" (field: cast[2].character) references "obadiah-stain" in collection
+"characters", but that entry does not exist.
+```
+
+…and then **exits 0**. Both `npm run build` and `npm run check` do this, and so
+does a build whose page resolves the reference via `getEntry` — the entry simply
+comes back `undefined`. CI greps nothing, so a broken pointer merges green.
+
+Schema validation proper — a bad enum, a missing required field, an unknown key
+— *does* fail with a non-zero exit. It is only referential integrity that
+doesn't. Until that gap is closed, do not claim references are build-enforced,
+and read the build log rather than trusting the exit code when you touch
+content.
 
 ## Local development [current]
 
