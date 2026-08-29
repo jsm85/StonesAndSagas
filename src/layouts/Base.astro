@@ -1,0 +1,64 @@
+---
+/*
+ * The shared page shell: head, backdrop, header, footer.
+ *
+ * Every page renders through this, so the disclaimer and the visual language
+ * are structural rather than something each page has to remember.
+ */
+
+import '../styles/theme.css';
+import CosmicBackdrop from '../components/CosmicBackdrop.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+
+interface Props {
+  /* Page title, without the site name — the layout appends that. */
+  title?: string;
+  description: string;
+  /* What the header's telemetry pill reads. */
+  status?: string;
+}
+
+const { title, description, status = 'Phase 00 · Scaffold' } = Astro.props;
+
+/* BASE_URL carries the '/StonesAndSagas/' prefix in production. Never hardcode
+   a root-relative path — it resolves above the base and 404s. */
+const asset = (path: string) =>
+  `${import.meta.env.BASE_URL.replace(/\/$/, '')}/${path}`;
+
+const siteName = 'Stones & Sagas';
+const pageTitle = title ? `${title} · ${siteName}` : siteName;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" type="image/svg+xml" href={asset('favicon.svg')} />
+    <title>{pageTitle}</title>
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+  </head>
+  <body>
+    <CosmicBackdrop />
+    <SiteHeader status={status} />
+    <main>
+      <slot />
+    </main>
+    <SiteFooter />
+  </body>
+</html>
+
+<style>
+  main {
+    position: relative;
+    z-index: 5;
+    max-width: var(--sas-measure);
+    margin-inline: auto;
+    padding: var(--sas-space-2xl) var(--sas-gutter) var(--sas-space-2xl);
+  }
+</style>

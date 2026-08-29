@@ -1,0 +1,50 @@
+---
+/*
+ * The footer carries the fan-project disclaimer. That is a hard requirement,
+ * not a design flourish — it must stay visible on every page, so it lives in
+ * the shared layout rather than being repeated per page.
+ */
+---
+
+<footer class="site-footer">
+  <p class="disclaimer">
+    An unofficial, non-commercial fan project. Not affiliated with, endorsed by,
+    or sponsored by Marvel or The Walt Disney Company. All Marvel characters,
+    names, and related trademarks are the property of their respective owners.
+  </p>
+  <p class="signoff">Built for fun · Stones &amp; Sagas</p>
+</footer>
+
+<style>
+  .site-footer {
+    position: relative;
+    z-index: 5;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--sas-space-md);
+    max-width: var(--sas-measure);
+    margin-inline: auto;
+    padding: var(--sas-space-lg) var(--sas-gutter);
+    border-top: 1px solid var(--sas-hairline);
+  }
+
+  .disclaimer {
+    max-width: 62ch;
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    color: var(--sas-text-dim);
+  }
+
+  .signoff {
+    margin: 0;
+    font-family: var(--sas-font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--sas-track-wider);
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--sas-text-dim);
+  }
+</style>

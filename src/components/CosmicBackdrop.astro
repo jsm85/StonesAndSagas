@@ -1,0 +1,50 @@
+---
+/*
+ * The ambient layers behind every page: a drifting starfield and a CRT
+ * scanline overlay.
+ *
+ * Both are fixed to the viewport rather than absolutely placed in the page.
+ * That keeps the stars still while content scrolls (the parallax reads as
+ * depth), and it avoids putting an `overflow: hidden` ancestor above the
+ * sticky header, which would silently stop it sticking.
+ *
+ * Neither layer is content, so both are hidden from assistive technology and
+ * are transparent to pointer events.
+ */
+---
+
+<div class="backdrop-stars" aria-hidden="true"></div>
+<div class="backdrop-scanlines" aria-hidden="true"></div>
+
+<style>
+  /* Three star sizes at three tile sizes. Tiles of different, non-multiple
+     dimensions stop the eye finding the repeat. */
+  .backdrop-stars {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.5;
+    background-image:
+      radial-gradient(1.1px 1.1px at 30px 40px, rgb(255 255 255 / 0.85) 50%, transparent 51%),
+      radial-gradient(1px 1px at 180px 130px, rgb(190 220 255 / 0.6) 50%, transparent 51%),
+      radial-gradient(1.6px 1.6px at 90px 220px, rgb(255 200 230 / 0.55) 50%, transparent 51%);
+    background-size: 260px 260px, 340px 300px, 420px 380px;
+    animation: sas-drift var(--sas-drift-duration) linear infinite;
+  }
+
+  /* Sits above the content, not behind it — the point is that the page looks
+     like it is being read off a CRT. Kept faint enough not to touch contrast. */
+  .backdrop-scanlines {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    pointer-events: none;
+    opacity: 0.055;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      rgb(255 255 255 / 0.9) 0 1px,
+      transparent 1px 3px
+    );
+  }
+</style>

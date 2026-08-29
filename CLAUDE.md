@@ -20,10 +20,10 @@ because `&` is awkward in a URL. Use the right form for the context:
 Never render the site name to a visitor as "StonesAndSagas". In HTML, write the
 ampersand as `&amp;` where the context requires escaping.
 
-## Status: scaffolded, no content yet [current]
+## Status: styled scaffold, no content yet [current]
 
-The project is scaffolded and deploys, but carries **no real content**. Tracked
-contents:
+The project is scaffolded, styled and deploys, but carries **no real content**.
+Tracked contents:
 
 ```
 .
@@ -32,8 +32,19 @@ contents:
 │   └── deploy.yml       # push to main: build, deploy to Pages
 ├── public/
 │   └── favicon.svg      # self-made abstract mark, no Marvel imagery
-├── src/pages/
-│   └── index.astro      # placeholder landing page
+├── src/
+│   ├── components/
+│   │   ├── CosmicBackdrop.astro  # starfield + CRT scanline layers
+│   │   ├── FeatureCard.astro     # card with a procedural "plate" image
+│   │   ├── SiteFooter.astro      # carries the fan-project disclaimer
+│   │   └── SiteHeader.astro      # sticky wordmark + telemetry pill
+│   ├── layouts/
+│   │   └── Base.astro   # shared page shell
+│   ├── pages/
+│   │   └── index.astro  # landing page — styled, still content-free
+│   └── styles/
+│       ├── fonts/       # self-hosted woff2 subsets + OFL licence
+│       └── theme.css    # design tokens and base elements
 ├── astro.config.mjs
 ├── package.json
 ├── package-lock.json
@@ -43,8 +54,8 @@ contents:
 └── CLAUDE.md
 ```
 
-Not built yet: content collections, Zod schemas, layouts, components, real
-content, styling beyond the placeholder page.
+Not built yet: content collections, Zod schemas, real content, and every page
+beyond the landing page.
 
 Section tags below tell you how much to trust each one:
 
@@ -191,14 +202,100 @@ package.json
 tsconfig.json
 src/
   pages/          # routes
-  layouts/        # shared page shells          (not yet created)
-  components/     #                             (not yet created)
+  layouts/        # shared page shells
+  components/     #
   content/        # content collections         (not yet created)
   content.config.ts  # Zod schemas              (not yet created)
-  styles/         #                             (not yet created)
+  styles/         # theme.css tokens + fonts/
 public/           # static assets copied verbatim
 .github/workflows/
 ```
+
+## Design language [current]
+
+The site's look is an **80s Guardians-of-the-Galaxy space aesthetic**, set by a
+design mock the owner supplied. Everything it needs lives in
+`src/styles/theme.css` as CSS custom properties.
+
+**The rule: components reference tokens, never literals.** If you find yourself
+typing a colour or a font stack into a component, the token is missing — add it
+to `theme.css` instead. That is the whole point of the file.
+
+### Palette
+
+Colours are **oklch**, not hex. It keeps the palette perceptually even — the
+three accents sit at the same lightness, so none shouts over the others — and a
+lighter or darker variant is an edit to one number rather than a guess.
+
+| Token | Role |
+| --- | --- |
+| `--sas-void`, `--sas-void-deep` | The indigo ground everything sits on |
+| `--sas-panel-top`, `--sas-panel-bottom` | The faint vertical gradient inside cards and panels |
+| `--sas-magenta`, `--sas-magenta-bright` | Primary accent — leads |
+| `--sas-cyan`, `--sas-cyan-bright` | Secondary — links, hover states, "good" status |
+| `--sas-amber` | Third voice. Used sparingly, or it stops reading as an accent |
+| `--sas-violet` | Nebula and gradient fills, not text |
+| `--sas-text`, `--sas-text-muted`, `--sas-text-dim` | The three text levels |
+| `--sas-hairline*`, `--sas-glow-*` | 1px borders and the glows behind them |
+
+Every foreground token was checked against `--sas-void` for **WCAG AA**; the
+lowest, `--sas-text-dim`, lands at 6.5:1. Keep it that way — if you add a colour,
+check it rather than eyeballing it against a dark background, where everything
+looks fine and much of it isn't.
+
+### Typography
+
+Three faces, each with exactly one job:
+
+- **Michroma** (`--sas-font-display`) — the wordmark and display numerals.
+  Uppercase, wide, unmistakably 80s sci-fi. Never body text.
+- **Space Grotesk** (`--sas-font-body`) — headings and prose. Variable, 400–700.
+- **IBM Plex Mono** (`--sas-font-mono`) — every label, stamp, status and piece of
+  metadata. **Always uppercase with heavy tracking** (`--sas-track-wide`
+  through `--sas-track-widest`). This is the single most recognisable thing
+  about the design; when in doubt about a small piece of metadata, it is mono.
+
+All three are **self-hosted** from `src/styles/fonts/`, latin subsets, ~55 KB
+total. They sit under `src/` rather than `public/` so Vite fingerprints them and
+applies the `/StonesAndSagas/` base — plain CSS cannot interpolate `BASE_URL`.
+All are SIL OFL 1.1; `fonts/OFL.txt` must stay alongside them. Only ship weights
+the site actually uses.
+
+### Motifs
+
+The recurring vocabulary, so new pages look like the same site:
+
+- **Starfield and scanlines** — `CosmicBackdrop.astro`, fixed to the viewport.
+  Fixed rather than absolute: it keeps the stars still while content scrolls,
+  and avoids putting an `overflow` ancestor above the sticky header.
+- **Nebula bloom** — a soft three-colour radial behind hero content. Size it in
+  `vw`, not `%` of its container, or it overflows the document on narrow
+  viewports and produces a horizontal scrollbar.
+- **The Outrun grid** — a grid tipped back with `perspective(300px) rotateX()`,
+  scrolling toward the viewer, masked out at the top so it has no hard edge.
+- **Hairlines over boxes** — 1px translucent violet borders, with a magenta or
+  cyan left edge on panels. Never heavy borders or large radii.
+- **Cyan on hover** — magenta at rest, cyan on interaction, throughout.
+- **Mono stamps** — wide uppercase eyebrows and status lines, often with a
+  dotted leader running out to a value.
+
+### Motion
+
+Ambient loops (`sas-drift`, `sas-pulse`, `sas-horizon`) are defined in
+`theme.css` with their durations as tokens. **`prefers-reduced-motion: reduce`
+must switch all of them off** — the design runs several at once, which is a lot
+for anyone who has asked for less. The global block at the foot of `theme.css`
+handles this; do not add an animation that escapes it.
+
+### Images, and why there mostly aren't any
+
+The mock puts a poster or a film still in every card. **We cannot ship those** —
+see the [IP rules](#fan-content-and-ip-rules-hard-rule). The established
+alternative is a **plate**: an abstract, procedurally drawn CSS gradient keyed
+to an accent colour, as in `FeatureCard.astro`. Self-made by construction,
+weighs nothing, and holds the composition the design wants. Prefer a plate over
+hunting for a "safe" image. Avoid hard full-width edges in one — they read as a
+progress bar rather than as light.
 
 ## Content and data model [decided — not yet implemented]
 

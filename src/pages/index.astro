@@ -1,111 +1,296 @@
 ---
-const title = 'Stones & Sagas';
-// BASE_URL carries the '/StonesAndSagas/' prefix in production. Never hardcode
-// a root-relative path here or it resolves above the base and 404s.
-const base = import.meta.env.BASE_URL;
-const asset = (path: string) => `${base.replace(/\/$/, '')}/${path}`;
-const tagline = 'A MARVEL fan site, built for fun.';
+import Base from '../layouts/Base.astro';
+import FeatureCard from '../components/FeatureCard.astro';
+
+const description =
+  'An unofficial fan guide to the characters and screen titles of the Marvel ' +
+  'Cinematic Universe — in release order, in-universe order, and cross-referenced.';
+
+/* The build log is real. Each line reports something that is actually true of
+   the repository today, so the page stays honest about being a scaffold rather
+   than dressing up as a finished site. */
+const buildLog: { label: string; state: 'online' | 'pending' }[] = [
+  { label: 'Astro + TypeScript', state: 'online' },
+  { label: 'GitHub Pages deploy', state: 'online' },
+  { label: 'Visual theme', state: 'online' },
+  { label: 'Content schemas', state: 'pending' },
+  { label: 'Timeline', state: 'pending' },
+];
+
+const features = [
+  {
+    label: 'Two orderings',
+    title: 'Release order, or the way it happened',
+    body:
+      'Films, shows and shorts sort two ways — the order they reached us, and ' +
+      'the order events occur in. Episodes take their own place on the ' +
+      'timeline rather than hiding inside a series.',
+    accent: 'magenta' as const,
+  },
+  {
+    label: 'Cross-references',
+    title: 'Follow one thread across everything',
+    body:
+      'Pick a stone, an object, a character or an event and see every title ' +
+      'and scene that touches it, laid out in timeline order rather than ' +
+      'scattered across a dozen pages.',
+    accent: 'cyan' as const,
+  },
+  {
+    label: 'Further reading',
+    title: 'The comics worth reading alongside',
+    body:
+      'From any title, the runs and issues that inform it — titles, numbers ' +
+      'and credits, linking out to official sources rather than reproducing ' +
+      'anything.',
+    accent: 'amber' as const,
+  },
+];
 ---
 
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content={tagline} />
-    <link rel="icon" type="image/svg+xml" href={asset('favicon.svg')} />
-    <title>{title}</title>
-  </head>
-  <body>
-    <main>
-      <h1>Stones &amp; Sagas</h1>
-      <p class="tagline">{tagline}</p>
-      <p class="status">
-        The site is being built. There is nothing here yet — this page exists to
-        prove the build and deployment pipeline works end to end.
+<Base description={description}>
+  <section class="hero">
+    <div class="nebula" aria-hidden="true"></div>
+    <div class="horizon" aria-hidden="true"></div>
+
+    <div class="hero-copy">
+      <p class="eyebrow">Transmission 001 · Scaffold</p>
+      <h1 class="sas-glow-text">A galaxy, filed in order of events</h1>
+      <p class="lede">
+        Stones &amp; Sagas is an unofficial fan guide to the characters and
+        screen titles of the Marvel Cinematic Universe — films, shows and
+        shorts alike. Read them in the order they arrived, or the order they
+        actually happened.
       </p>
-    </main>
+    </div>
 
-    <footer>
-      <p>
-        An unofficial, non-commercial fan project. Not affiliated with, endorsed
-        by, or sponsored by Marvel or The Walt Disney Company. All Marvel
-        characters, names, and related trademarks are the property of their
-        respective owners.
-      </p>
-    </footer>
-
-    <style>
-      :root {
-        --ink: #1a1a2e;
-        --muted: #5a5a72;
-        --accent: #6b46c1;
-        --paper: #fdfdfd;
-      }
-
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --ink: #ececf4;
-          --muted: #a0a0b8;
-          --accent: #b794f6;
-          --paper: #16161f;
+    <aside class="build-panel">
+      <p class="panel-heading">Build status</p>
+      <ul class="log">
+        {
+          buildLog.map((entry) => (
+            <li class="log-row" data-state={entry.state}>
+              <span class="log-label">{entry.label}</span>
+              <span class="log-rule" aria-hidden="true"></span>
+              <span class="log-state">{entry.state}</span>
+            </li>
+          ))
         }
-      }
+      </ul>
+      <p class="panel-note">
+        There is no catalogue here yet. This page exists to prove the build and
+        deployment pipeline works end to end — and now, that the visual
+        language does too.
+      </p>
+    </aside>
+  </section>
 
-      html {
-        background: var(--paper);
-        color: var(--ink);
-        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-        line-height: 1.6;
-      }
+  <section class="planned" aria-labelledby="planned-heading">
+    <p class="section-stamp" id="planned-heading">What it will do</p>
+    <div class="feature-grid">
+      {features.map((feature) => <FeatureCard {...feature} />)}
+    </div>
+  </section>
+</Base>
 
-      body {
-        margin: 0;
-        min-height: 100vh;
-        display: flex;
-        flex-direction: column;
-      }
+<style>
+  /* --- Hero -------------------------------------------------------------- */
 
-      main {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        max-width: 40rem;
-        margin-inline: auto;
-        padding: 4rem 1.5rem;
-      }
+  .hero {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1.35fr 1fr;
+    gap: var(--sas-space-xl);
+    align-items: end;
+    padding-bottom: var(--sas-space-2xl);
+  }
 
-      h1 {
-        margin: 0;
-        font-size: clamp(2.5rem, 8vw, 4rem);
-        letter-spacing: -0.02em;
-        color: var(--accent);
-      }
+  /* A soft three-colour bloom behind the headline. Pinned to the hero rather
+     than the viewport so it reads as light coming off the title.
+     Width is capped in `vw`, not `%`: the hero is viewport-centred, so
+     92vw against a -52% shift keeps both edges inside the viewport at every
+     width. Sizing it off the hero instead overflowed the document on narrow
+     screens and produced a horizontal scrollbar. */
+  .nebula {
+    position: absolute;
+    top: -60%;
+    left: 50%;
+    width: min(1300px, 92vw);
+    height: 760px;
+    transform: translateX(-52%);
+    pointer-events: none;
+    filter: blur(24px);
+    background:
+      radial-gradient(48% 52% at 42% 45%, oklch(0.62 0.17 350 / 0.26), transparent 70%),
+      radial-gradient(46% 48% at 72% 58%, oklch(0.62 0.14 260 / 0.24), transparent 72%),
+      radial-gradient(40% 40% at 22% 62%, oklch(0.72 0.14 55 / 0.14), transparent 70%);
+  }
 
-      .tagline {
-        font-size: 1.25rem;
-        margin: 0.5rem 0 2rem;
-      }
+  /* The Outrun grid: a flat grid tipped back into perspective and scrolled
+     toward the viewer, faded out at the top so it has no hard edge. */
+  .horizon {
+    position: absolute;
+    left: calc(var(--sas-gutter) * -1);
+    right: calc(var(--sas-gutter) * -1);
+    bottom: 0;
+    height: 300px;
+    overflow: hidden;
+    pointer-events: none;
+    mask-image: linear-gradient(to top, #000, transparent);
 
-      .status {
-        color: var(--muted);
-        border-left: 3px solid var(--accent);
-        padding-left: 1rem;
-        margin: 0;
-      }
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(to right, oklch(0.68 0.17 340 / 0.55) 1px, transparent 1px),
+        linear-gradient(to bottom, oklch(0.70 0.15 200 / 0.5) 1px, transparent 1px);
+      background-size: 60px 60px;
+      transform: perspective(300px) rotateX(62deg);
+      transform-origin: bottom center;
+      animation: sas-horizon var(--sas-horizon-duration) linear infinite;
+    }
+  }
 
-      footer {
-        max-width: 40rem;
-        margin-inline: auto;
-        padding: 2rem 1.5rem;
-      }
+  .hero-copy {
+    position: relative;
+    z-index: 1;
+  }
 
-      footer p {
-        color: var(--muted);
-        font-size: 0.8rem;
-        margin: 0;
-      }
-    </style>
-  </body>
-</html>
+  .eyebrow {
+    display: inline-block;
+    margin: 0 0 var(--sas-space-md);
+    padding: var(--sas-space-2xs) 0.75rem;
+    border: 1px solid var(--sas-hairline-warm);
+    font-family: var(--sas-font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--sas-track-widest);
+    text-transform: uppercase;
+    color: var(--sas-magenta-bright);
+  }
+
+  h1 {
+    margin: 0 0 var(--sas-space-md);
+    font-size: clamp(2.5rem, 6.5vw, 4rem);
+    line-height: 1.02;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+  }
+
+  .lede {
+    margin: 0;
+    max-width: 46ch;
+    font-size: 1.0625rem;
+    line-height: 1.6;
+    color: var(--sas-text-muted);
+  }
+
+  /* --- Build panel -------------------------------------------------------- */
+
+  .build-panel {
+    position: relative;
+    z-index: 1;
+    padding: var(--sas-space-md);
+    border: 1px solid var(--sas-hairline);
+    border-left: 2px solid var(--sas-magenta);
+    background: linear-gradient(180deg, var(--sas-panel-top), var(--sas-panel-bottom));
+  }
+
+  .panel-heading {
+    margin: 0 0 var(--sas-space-sm);
+    font-family: var(--sas-font-mono);
+    font-size: 0.625rem;
+    letter-spacing: var(--sas-track-widest);
+    text-transform: uppercase;
+    color: var(--sas-magenta-bright);
+  }
+
+  .log {
+    margin: 0 0 var(--sas-space-md);
+    padding: 0;
+    list-style: none;
+    font-family: var(--sas-font-mono);
+    font-size: 0.75rem;
+  }
+
+  .log-row {
+    display: flex;
+    align-items: baseline;
+    gap: var(--sas-space-2xs);
+    padding: 0.3125rem 0;
+  }
+
+  .log-label {
+    color: var(--sas-text-muted);
+  }
+
+  /* A dotted leader, the way a printed index or a terminal readout runs the
+     eye across to the value. */
+  .log-rule {
+    flex: 1;
+    height: 1px;
+    min-width: var(--sas-space-sm);
+    border-bottom: 1px dotted var(--sas-hairline-warm);
+  }
+
+  .log-state {
+    letter-spacing: var(--sas-track-wide);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .log-row[data-state='online'] .log-state {
+    color: var(--sas-cyan);
+  }
+
+  .log-row[data-state='pending'] .log-state {
+    color: var(--sas-text-dim);
+  }
+
+  .panel-note {
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.55;
+    color: var(--sas-text-dim);
+  }
+
+  /* --- Planned features --------------------------------------------------- */
+
+  .planned {
+    margin-top: var(--sas-space-2xl);
+    padding-top: var(--sas-space-lg);
+    border-top: 1px solid var(--sas-hairline);
+  }
+
+  .section-stamp {
+    margin: 0 0 var(--sas-space-md);
+    font-family: var(--sas-font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--sas-track-widest);
+    text-transform: uppercase;
+    color: var(--sas-cyan);
+  }
+
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: var(--sas-space-sm);
+  }
+
+  /* --- Narrow viewports ---------------------------------------------------- */
+
+  @media (width < 56rem) {
+    .hero {
+      grid-template-columns: 1fr;
+      gap: var(--sas-space-lg);
+      padding-bottom: var(--sas-space-xl);
+    }
+
+    /* The perspective grid needs width to read as a horizon; on a phone it just
+       clutters the panel behind it. */
+    .horizon {
+      height: 190px;
+      opacity: 0.7;
+    }
+  }
+</style>
