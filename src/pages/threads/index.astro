@@ -14,6 +14,8 @@ import PageIntro from '../../components/PageIntro.astro';
 import CardGrid from '../../components/CardGrid.astro';
 import EntryCard from '../../components/EntryCard.astro';
 import { ENTITY_KINDS, ENTITY_KINDS_PLURAL, type EntityKind } from '../../lib/format';
+import { ENTITY_ICONS } from '../../lib/icons';
+import Icon from '../../components/Icon.astro';
 import { href } from '../../lib/href';
 
 const entities = await getCollection('entities');
@@ -56,6 +58,7 @@ const accents: Record<EntityKind, 'magenta' | 'cyan' | 'amber'> = {
     groups.map((group) => (
       <section class="group" aria-labelledby={`group-${group.kind}`}>
         <h2 class="group-heading" id={`group-${group.kind}`}>
+          <Icon name={ENTITY_ICONS[group.kind]} size={15} />
           {ENTITY_KINDS_PLURAL[group.kind]}
           <span class="count">{group.entries.length}</span>
         </h2>
@@ -64,6 +67,7 @@ const accents: Record<EntityKind, 'magenta' | 'cyan' | 'amber'> = {
             <EntryCard
               href={href(`threads/${entity.id}`)}
               label={ENTITY_KINDS[entity.data.kind]}
+              icon={ENTITY_ICONS[entity.data.kind]}
               title={entity.data.name}
               summary={entity.data.summary}
               accent={accents[group.kind]}

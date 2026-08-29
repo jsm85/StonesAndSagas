@@ -13,19 +13,27 @@
  * to the design rather than to a grey box.
  */
 
+import { plateStyle } from '../lib/plate';
+
 interface Props {
   accent: 'magenta' | 'cyan' | 'amber';
-  /* `card` is the 9.5rem band from the mock; `hero` is the taller page header. */
-  size?: 'card' | 'hero';
+  /* `card` is the 9.5rem band from the mock, `hero` the taller page header, and
+     `cover` a portrait panel for a printed work. */
+  size?: 'card' | 'hero' | 'cover';
+  /* The entry id. Every plate drew the same picture before this: the id gives
+     each one its own stars and blooms, stable across builds because the id is.
+     Without it the plate falls back to the original fixed composition. */
+  seed?: string;
   /* An external image link — never a file in this repo. */
   image?: { url: string; source: string; alt: string };
 }
 
-const { accent, size = 'card', image } = Astro.props;
+const { accent, size = 'card', seed, image } = Astro.props;
 ---
 
-<div class="plate" data-accent={accent} data-size={size}>
+<div class="plate" data-accent={accent} data-size={size} style={seed ? plateStyle(seed) : undefined}>
   {image && <img src={image.url} alt={image.alt} loading="lazy" decoding="async" />}
+  <slot />
 </div>
 
 <style>
@@ -33,16 +41,35 @@ const { accent, size = 'card', image } = Astro.props;
      across the plate, and a hard full-width edge reads as a progress bar rather
      than as light. The accent glow sits off-centre and well inside the plate's
      width so it stays a glow rather than a band. */
+  /* The composition is driven by custom properties so one set of rules covers
+     every entry. The fallbacks are the original fixed figure, which is what an
+     unseeded plate still draws. */
   .plate {
     position: relative;
     overflow: hidden;
     background-color: var(--sas-void-deep);
     background-image:
-      radial-gradient(1.2px 1.2px at 24% 30%, rgb(255 255 255 / 0.9) 50%, transparent 51%),
-      radial-gradient(1px 1px at 68% 18%, rgb(255 255 255 / 0.7) 50%, transparent 51%),
-      radial-gradient(1.4px 1.4px at 82% 62%, rgb(200 225 255 / 0.6) 50%, transparent 51%),
-      radial-gradient(44% 52% at 28% 96%, color-mix(in oklab, var(--sas-accent) 60%, transparent), transparent 70%),
-      radial-gradient(58% 78% at 86% -12%, oklch(0.62 0.14 255 / 0.38), transparent 70%);
+      radial-gradient(
+        var(--star-0-size, 1.2px) var(--star-0-size, 1.2px) at var(--star-0-x, 24%) var(--star-0-y, 30%),
+        rgb(255 255 255 / 0.9) 50%,
+        transparent 51%
+      ),
+      radial-gradient(
+        var(--star-1-size, 1px) var(--star-1-size, 1px) at var(--star-1-x, 68%) var(--star-1-y, 18%),
+        rgb(255 255 255 / 0.7) 50%,
+        transparent 51%
+      ),
+      radial-gradient(
+        var(--star-2-size, 1.4px) var(--star-2-size, 1.4px) at var(--star-2-x, 82%) var(--star-2-y, 62%),
+        rgb(200 225 255 / 0.6) 50%,
+        transparent 51%
+      ),
+      radial-gradient(
+        var(--bloom-size, 44%) 52% at var(--bloom-x, 28%) 96%,
+        color-mix(in oklab, var(--sas-accent) 60%, transparent),
+        transparent 70%
+      ),
+      radial-gradient(58% 78% at var(--nebula-x, 86%) -12%, oklch(0.62 0.14 255 / 0.38), transparent 70%);
     background-repeat: no-repeat;
   }
 
@@ -53,6 +80,12 @@ const { accent, size = 'card', image } = Astro.props;
 
   .plate[data-size='hero'] {
     height: clamp(9rem, 26vw, 15rem);
+    border: 1px solid var(--sas-hairline);
+  }
+
+  /* Portrait, at roughly the proportions of a comic. */
+  .plate[data-size='cover'] {
+    aspect-ratio: 2 / 3;
     border: 1px solid var(--sas-hairline);
   }
 

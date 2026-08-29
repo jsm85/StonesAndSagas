@@ -51,8 +51,10 @@ cross-reference feature reads. See [CLAUDE.md](CLAUDE.md#content-and-data-model-
 
 The look is an 80s Guardians-of-the-Galaxy space aesthetic: a deep indigo void,
 neon magenta and cyan, wide-tracked uppercase mono, a drifting starfield and a
-perspective grid horizon. Fonts are self-hosted and open-licence; no Marvel
-imagery is used anywhere. The palette and motifs are documented in
+perspective grid horizon. Fonts are self-hosted and open-licence; the icons are
+drawn in the repo; and where the design wants a poster or a cover, it draws an
+abstract "plate" whose composition is derived from the entry's id. **No Marvel
+imagery is used anywhere** — no posters, no stills, no comic covers. The palette and motifs are documented in
 [CLAUDE.md](CLAUDE.md#design-language-current).
 
 Built with [Astro](https://astro.build) and TypeScript. No server, no database:

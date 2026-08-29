@@ -88,7 +88,12 @@ const next = siblings[position + 1];
 >
   <article data-accent={accent}>
     <header class="hero">
-      <Plate accent={accent} size="hero" image={data.images.banner ?? data.images.poster} />
+      <Plate
+        accent={accent}
+        size="hero"
+        seed={episode.id}
+        image={data.images.banner ?? data.images.poster}
+      />
       <p class="sas-stamp kind">
         {series ? <a href={href(`titles/${series.id}`)}>{series.data.title}</a> : 'Episode'}
         <span class="code">{code}</span>

@@ -3,9 +3,9 @@ import { getCollection } from 'astro:content';
 
 import Base from '../../layouts/Base.astro';
 import PageIntro from '../../components/PageIntro.astro';
-import CardGrid from '../../components/CardGrid.astro';
-import EntryCard from '../../components/EntryCard.astro';
+import CoverPlate from '../../components/CoverPlate.astro';
 import { formatCoverDate, READING_KINDS } from '../../lib/format';
+import { READING_ICONS } from '../../lib/icons';
 import { href } from '../../lib/href';
 
 const reading = (await getCollection('reading')).sort((a, b) =>
@@ -26,27 +26,26 @@ const accents = { issue: 'magenta', collection: 'cyan', book: 'amber' } as const
     lede="Comics, collected editions and prose books, each carrying what it is to the titles it relates to — the story a film adapts, the issue a character first appeared in, or simply useful background."
   />
 
-  <CardGrid>
+  <ul class="shelf">
     {
       reading.map((work) => (
-        <EntryCard
-          href={href(`reading/${work.id}`)}
-          label={READING_KINDS[work.data.kind]}
-          title={work.data.title}
-          summary={work.data.summary}
-          accent={accents[work.data.kind]}
-          plate={false}
-          meta={[
-            formatCoverDate(work.data.published),
-            ...(work.data.kind === 'issue'
-              ? [`${work.data.series} #${work.data.issueNumber}`]
-              : []),
-            ...(work.data.publisher ? [work.data.publisher] : []),
-          ]}
-        />
+        <li data-accent={accents[work.data.kind]}>
+          <a href={href(`reading/${work.id}`)}>
+            <CoverPlate
+              seed={work.id}
+              accent={accents[work.data.kind]}
+              kind={READING_ICONS[work.data.kind]}
+              eyebrow={work.data.kind === 'issue' ? work.data.series : work.data.publisher}
+              number={work.data.kind === 'issue' ? `#${work.data.issueNumber}` : undefined}
+              title={work.data.title}
+              date={formatCoverDate(work.data.published)}
+            />
+          </a>
+          <p class="caption">{work.data.summary}</p>
+        </li>
       ))
     }
-  </CardGrid>
+  </ul>
 
   <p class="footnote">
     No covers, here or anywhere: cover art and solicitation copy belong to their
@@ -56,6 +55,36 @@ const accents = { issue: 'magenta', collection: 'cyan', book: 'amber' } as const
 </Base>
 
 <style>
+  /* A shelf rather than the card grid: these are portrait, and standing them in
+     a row is the one arrangement that says "printed" without any artwork. */
+  .shelf {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(13rem, 100%), 1fr));
+    gap: var(--sas-space-lg) var(--sas-space-md);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .shelf a {
+    display: block;
+    transition:
+      transform var(--sas-transition) ease,
+      filter var(--sas-transition) ease;
+
+    &:hover {
+      transform: translateY(-4px);
+      filter: drop-shadow(0 18px 30px oklch(0.72 0.14 200 / 0.28));
+    }
+  }
+
+  .caption {
+    margin: var(--sas-space-sm) 0 0;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--sas-text-muted);
+  }
+
   .footnote {
     margin: var(--sas-space-lg) 0 0;
     max-width: 62ch;

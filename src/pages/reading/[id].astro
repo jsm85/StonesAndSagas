@@ -11,7 +11,9 @@ import { getCollection, getEntry, render } from 'astro:content';
 import type { CollectionEntry } from 'astro:content';
 
 import Base from '../../layouts/Base.astro';
+import CoverPlate from '../../components/CoverPlate.astro';
 import FactList from '../../components/FactList.astro';
+import Icon from '../../components/Icon.astro';
 import {
   CREATOR_ROLES,
   formatCoverDate,
@@ -20,6 +22,7 @@ import {
   type CreatorRole,
   type Relationship,
 } from '../../lib/format';
+import { READING_ICONS } from '../../lib/icons';
 import { href } from '../../lib/href';
 
 export async function getStaticPaths() {
@@ -78,6 +81,7 @@ const accent = accents[data.kind];
   <article data-accent={accent}>
     <header class="hero">
       <p class="sas-stamp">
+        <Icon name={READING_ICONS[data.kind]} size={15} />
         {READING_KINDS[data.kind]}
         {data.kind === 'issue' && <span class="dim">{data.series} #{data.issueNumber}</span>}
       </p>
@@ -131,6 +135,22 @@ const accent = accents[data.kind];
       </div>
 
       <aside class="side">
+        <div class="cover">
+          <CoverPlate
+            seed={work.id}
+            accent={accent}
+            kind={READING_ICONS[data.kind]}
+            eyebrow={data.kind === 'issue' ? data.series : data.publisher}
+            number={data.kind === 'issue' ? `#${data.issueNumber}` : undefined}
+            title={data.title}
+            date={formatCoverDate(data.published)}
+          />
+          <p class="cover-note">
+            Not the cover. Cover art belongs to its publisher, so this is drawn
+            from the site's own palette instead.
+          </p>
+        </div>
+
         <FactList heading="Publication" facts={facts} />
 
         {
@@ -171,7 +191,18 @@ const accent = accents[data.kind];
   .sas-stamp {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 0.75em;
+  }
+
+  .cover-note {
+    margin: var(--sas-space-xs) 0 0;
+    font-family: var(--sas-font-mono);
+    font-size: 0.5625rem;
+    line-height: 1.6;
+    letter-spacing: var(--sas-track-wide);
+    text-transform: uppercase;
+    color: var(--sas-text-dim);
   }
 
   .dim {

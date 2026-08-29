@@ -14,6 +14,7 @@ import PageIntro from '../../components/PageIntro.astro';
 import CardGrid from '../../components/CardGrid.astro';
 import EntryCard from '../../components/EntryCard.astro';
 import { formatRuntime, formatYear, TITLE_KINDS } from '../../lib/format';
+import { TITLE_ICONS } from '../../lib/icons';
 import { href } from '../../lib/href';
 
 const titles = await getCollection('titles');
@@ -52,18 +53,20 @@ const metaFor = (title: (typeof titles)[number]) =>
         <EntryCard
           href={href(`titles/${title.id}`)}
           label={TITLE_KINDS[title.data.kind]}
+          icon={TITLE_ICONS[title.data.kind]}
           title={title.data.title}
           summary={title.data.summary}
           accent={title.data.accent}
           meta={metaFor(title)}
           image={title.data.images.poster}
+          seed={title.id}
         />
       ))
     }
   </CardGrid>
 
   <p class="footnote">
-    A seed set proving the content model, not a catalogue.
+    A seed set proving the content model, not a catalogue.{' '}
     <a href={href('timeline')}>The timeline</a> orders the same material by when
     it happens.
   </p>

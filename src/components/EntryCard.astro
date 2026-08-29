@@ -7,11 +7,15 @@
  */
 
 import Plate from './Plate.astro';
+import Icon from './Icon.astro';
+import type { IconName } from '../lib/icons';
 
 interface Props {
   href: string;
   /* Mono eyebrow: the kind of thing this is. */
   label: string;
+  /* The glyph for that kind. Decorative — the label stays either way. */
+  icon?: IconName;
   title: string;
   summary: string;
   accent?: 'magenta' | 'cyan' | 'amber';
@@ -20,24 +24,31 @@ interface Props {
   /* Drop the plate for a denser list where the image adds nothing. */
   plate?: boolean;
   image?: { url: string; source: string; alt: string };
+  /* Entry id, so the plate's composition differs from its neighbours'. */
+  seed?: string;
 }
 
 const {
   href,
   label,
+  icon,
   title,
   summary,
   accent = 'magenta',
   meta = [],
   plate = true,
   image,
+  seed,
 } = Astro.props;
 ---
 
 <article class="card" data-accent={accent}>
-  {plate && <Plate accent={accent} image={image} />}
+  {plate && <Plate accent={accent} image={image} seed={seed} />}
   <div class="body">
-    <p class="label">{label}</p>
+    <p class="label">
+      {icon && <Icon name={icon} size={13} />}
+      <span>{label}</span>
+    </p>
     {/* The whole card is clickable via this link's ::after, so the card stays
         one link for a screen reader rather than three. */}
     <h3 class="title"><a href={href}>{title}</a></h3>
@@ -84,6 +95,9 @@ const {
   }
 
   .label {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
     margin: 0 0 var(--sas-space-2xs);
     font-family: var(--sas-font-mono);
     font-size: 0.625rem;

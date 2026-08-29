@@ -16,6 +16,7 @@ import TimelineList from '../components/TimelineList.astro';
 import TimelineRow from '../components/TimelineRow.astro';
 import { byTimelineOrder, toTimelineUnits } from '../lib/timeline';
 import { formatEpisodeCode, formatYear, UNIT_KINDS } from '../lib/format';
+import { UNIT_ICONS } from '../lib/icons';
 import { href } from '../lib/href';
 
 const units = toTimelineUnits(
@@ -42,6 +43,7 @@ const units = toTimelineUnits(
           href={href(`${unit.collection}/${unit.id}`)}
           name={unit.name}
           kind={UNIT_KINDS[unit.kind]}
+          icon={UNIT_ICONS[unit.kind]}
           accent={unit.accent}
           context={
             unit.series

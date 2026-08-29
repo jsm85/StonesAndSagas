@@ -23,6 +23,8 @@ import {
   UNIT_KINDS,
   type AppearanceType,
 } from '../../lib/format';
+import { ENTITY_ICONS, UNIT_ICONS } from '../../lib/icons';
+import Icon from '../../components/Icon.astro';
 import { href } from '../../lib/href';
 import { indexUnits, resolveAppearances, toTimelineUnits } from '../../lib/timeline';
 
@@ -85,7 +87,10 @@ const accent = accents[data.kind];
 <Base title={data.name} status={`Thread · ${ENTITY_KINDS[data.kind]}`} description={data.summary}>
   <article data-accent={accent}>
     <header class="hero">
-      <p class="sas-stamp">{ENTITY_KINDS[data.kind]}</p>
+      <p class="sas-stamp kind">
+        <Icon name={ENTITY_ICONS[data.kind]} size={15} />
+        {ENTITY_KINDS[data.kind]}
+      </p>
       <h1 class="sas-glow-text">{data.name}</h1>
       <p class="lede">{data.summary}</p>
       {
@@ -124,6 +129,7 @@ const accent = accents[data.kind];
                     href={href(`${unit.collection}/${unit.id}`)}
                     name={unit.name}
                     kind={UNIT_KINDS[unit.kind]}
+                    icon={UNIT_ICONS[unit.kind]}
                     accent={accent}
                     context={
                       unit.series
@@ -160,6 +166,12 @@ const accent = accents[data.kind];
 <style>
   .hero {
     margin-bottom: var(--sas-space-lg);
+  }
+
+  .kind {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
   }
 
   h1 {

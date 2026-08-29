@@ -24,6 +24,8 @@ import {
   UNIT_KINDS,
   type AppearanceType,
 } from '../../lib/format';
+import { READING_ICONS, UNIT_ICONS } from '../../lib/icons';
+import Icon from '../../components/Icon.astro';
 import { href } from '../../lib/href';
 import {
   characterAppearances,
@@ -125,6 +127,7 @@ const facts = [
                     href={href(`${unit.collection}/${unit.id}`)}
                     name={unit.name}
                     kind={UNIT_KINDS[unit.kind]}
+                    icon={UNIT_ICONS[unit.kind]}
                     accent={unit.accent}
                     context={
                       unit.series
@@ -167,6 +170,7 @@ const facts = [
                   <li>
                     <a href={href(`reading/${work.id}`)}>{work.data.title}</a>
                     <p class="print-meta">
+                      <Icon name={READING_ICONS[work.data.kind]} size={12} />
                       {READING_KINDS[work.data.kind]}
                       {work.data.kind === 'issue' && ` · ${work.data.series} #${work.data.issueNumber}`}
                       {` · ${formatCoverDate(work.data.published)}`}
@@ -255,6 +259,9 @@ const facts = [
   }
 
   .print-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
     margin: var(--sas-space-2xs) 0 0;
     font-family: var(--sas-font-mono);
     font-size: 0.625rem;

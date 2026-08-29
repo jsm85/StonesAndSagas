@@ -41,7 +41,9 @@ machinery is built; the content is not. Tracked contents:
 │   │   ├── CosmicBackdrop.astro  # starfield + CRT scanline layers
 │   │   ├── EntryCard.astro       # linked card for any index
 │   │   ├── FactList.astro        # dotted-leader metadata panel
+│   │   ├── CoverPlate.astro      # cover-shaped stand-in for a printed work
 │   │   ├── FeatureCard.astro     # landing-page feature card
+│   │   ├── Icon.astro            # the eleven glyphs, drawn here
 │   │   ├── PageIntro.astro       # stamp + title + lede, on every index
 │   │   ├── Plate.astro           # the procedural stand-in for artwork
 │   │   ├── SiteFooter.astro      # carries the fan-project disclaimer
@@ -61,6 +63,8 @@ machinery is built; the content is not. Tracked contents:
 │   ├── lib/             # the logic, with its tests beside it
 │   │   ├── format.ts    # dates, runtimes, labels for every schema enum
 │   │   ├── href.ts      # base-path-safe internal links
+│   │   ├── icons.ts     # which glyph stands for which kind
+│   │   ├── plate.ts     # per-entry plate composition, hashed from the id
 │   │   └── timeline.ts  # ordering, appearance resolution, reverse lookup
 │   ├── pages/
 │   │   ├── characters/  # index + one page per character
@@ -332,13 +336,58 @@ before writing new CSS:
 - **`Plate.astro`** is the plate, in one place now that cards, title heroes and
   episode heroes all want one. It also renders a licensed image when a title has
   one, keeping the plate behind it so a blocked image degrades to the design.
+- **`Icon.astro`** holds every glyph. Nothing else draws an SVG inline.
+
+### Icons [current]
+
+Eleven glyphs, one per kind the catalogue labels, drawn in `Icon.astro` and
+mapped to the schema enums in `src/lib/icons.ts`. No icon library: a package
+brings a house style that is not this one, and eleven shapes this simple are
+smaller than the dependency that would draw them.
+
+The rules that keep them a set — follow them if you add one:
+
+- a 24×24 box, figure inside a 20×20 area, stroke-only at 1.5 units
+- `currentColor` and nothing else, so an icon takes the accent of whatever it
+  sits in and needs no per-accent variant
+- `aria-hidden`, always beside a text label and never instead of one
+
+**Draw for 12px, not for the proof sheet.** Icons render at 12–15px next to mono
+labels, and three of the first eleven failed there while looking fine at 64px: a
+ringed planet turned to mush, a detached spark read as a stray plus, and a
+branching timeline collapsed into a bare `<`. They became a globe, a narrow film
+gate and two overlapping rings. Render a candidate at the size it will actually
+be used before keeping it.
+
+`src/lib/icons.test.ts` reads `Icon.astro` and checks that every mapped name is
+really drawn — TypeScript can check that every kind *has* a glyph, but not that
+the glyph exists in the markup.
+
+### Plates differ per entry [current]
+
+`plateFigure(id)` in `src/lib/plate.ts` hashes the entry id into star and bloom
+positions, so a grid of cards is not the same gradient repeated. A hash rather
+than `Math.random()` deliberately: a static site is rebuilt constantly, and a
+plate that moved every build would put the whole site into the diff of every
+content edit. The ranges are clamped so the hash cannot pick something outside
+the design, and both properties are unit-tested.
 
 ### Images, and why there mostly aren't any
 
 The mock puts a poster or a film still in every card. **We cannot ship those** —
 see the [IP rules](#fan-content-and-ip-rules-hard-rule). The established
 alternative is a **plate**: an abstract, procedurally drawn CSS gradient keyed
-to an accent colour, as in `FeatureCard.astro`. Self-made by construction,
+to an accent colour, as in `Plate.astro`.
+
+**Comic covers are a firmer no than posters.** `titles` may carry an external
+`poster` or `banner` link, because the IP rules permit linking to an official
+source. `reading` deliberately cannot: covers are named in those rules, and the
+schema has nowhere to put one. A printed work renders `CoverPlate.astro`
+instead — the *shape* of a cover, carrying the series and issue number in the
+display face, drawn from the palette. It is not a pastiche: no trade dress, no
+corner box, no logo. If linked official covers are ever wanted, that is a
+deliberate relaxation of a documented decision and needs the owner's explicit
+yes on its own issue. Self-made by construction,
 weighs nothing, and holds the composition the design wants. Prefer a plate over
 hunting for a "safe" image. Avoid hard full-width edges in one — they read as a
 progress bar rather than as light.

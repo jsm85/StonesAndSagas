@@ -9,11 +9,16 @@
  * lists stay plain <ol>s.
  */
 
+import Icon from './Icon.astro';
+import type { IconName } from '../lib/icons';
+
 interface Props {
   href: string;
   name: string;
   /* 'Film', 'Short', 'Episode'. */
   kind: string;
+  /* The glyph for it. Episodes take the series glyph. */
+  icon?: IconName;
   accent: 'magenta' | 'cyan' | 'amber';
   /* 'WandaVision · S01E02', for an episode. */
   context?: string;
@@ -28,7 +33,8 @@ interface Props {
   note?: string;
 }
 
-const { href, name, kind, accent, context, setting, year, badge, scene, note } = Astro.props;
+const { href, name, kind, icon, accent, context, setting, year, badge, scene, note } =
+  Astro.props;
 ---
 
 <li class="row" data-accent={accent}>
@@ -36,7 +42,8 @@ const { href, name, kind, accent, context, setting, year, badge, scene, note } =
 
   <div class="head">
     <p class="kind">
-      {kind}
+      {icon && <Icon name={icon} size={13} />}
+      <span>{kind}</span>
       {badge && <span class="badge">{badge}</span>}
     </p>
     <h3 class="name"><a href={href}>{name}</a></h3>
@@ -95,7 +102,7 @@ const { href, name, kind, accent, context, setting, year, badge, scene, note } =
     display: flex;
     flex-wrap: wrap;
     gap: 0.5em;
-    align-items: baseline;
+    align-items: center;
     font-family: var(--sas-font-mono);
     font-size: 0.625rem;
     letter-spacing: var(--sas-track-widest);

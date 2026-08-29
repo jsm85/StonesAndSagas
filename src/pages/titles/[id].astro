@@ -19,21 +19,20 @@ import TimelineList from '../../components/TimelineList.astro';
 import TimelineRow from '../../components/TimelineRow.astro';
 import {
   APPEARANCE_TYPES,
-  CREATOR_ROLES,
   formatCertification,
   formatDate,
   formatEpisodeCode,
   formatRuntime,
   formatYear,
-  isoDate,
   READING_KINDS,
   RELATIONSHIPS,
   TITLE_KINDS,
   UNIT_KINDS,
   type AppearanceType,
-  type CreatorRole,
   type Relationship,
 } from '../../lib/format';
+import { ENTITY_ICONS, READING_ICONS, TITLE_ICONS, UNIT_ICONS } from '../../lib/icons';
+import Icon from '../../components/Icon.astro';
 import { href } from '../../lib/href';
 import { referencesTo, unitKey } from '../../lib/timeline';
 
@@ -124,8 +123,16 @@ const kindLabel = TITLE_KINDS[data.kind];
 >
   <article data-accent={data.accent}>
     <header class="hero">
-      <Plate accent={data.accent} size="hero" image={data.images.banner ?? data.images.poster} />
-      <p class="sas-stamp kind">{kindLabel}</p>
+      <Plate
+        accent={data.accent}
+        size="hero"
+        seed={title.id}
+        image={data.images.banner ?? data.images.poster}
+      />
+      <p class="sas-stamp kind">
+        <Icon name={TITLE_ICONS[data.kind]} size={15} />
+        {kindLabel}
+      </p>
       <h1 class="sas-glow-text">{data.title}</h1>
       <p class="lede">{data.summary}</p>
       {
@@ -178,6 +185,7 @@ const kindLabel = TITLE_KINDS[data.kind];
                     href={href(`episodes/${episode.id}`)}
                     name={episode.data.title}
                     kind={UNIT_KINDS.episode}
+                    icon={UNIT_ICONS.episode}
                     accent={episode.data.accent ?? data.accent}
                     context={formatEpisodeCode(episode.data.season, episode.data.episode)}
                     setting={episode.data.timeline.setting}
@@ -226,6 +234,7 @@ const kindLabel = TITLE_KINDS[data.kind];
                       <span class="badge">{RELATIONSHIPS[relation!.relationship as Relationship]}</span>
                     </p>
                     <p class="reading-kind">
+                      <Icon name={READING_ICONS[work.data.kind]} size={12} />
                       {READING_KINDS[work.data.kind]}
                       {work.data.kind === 'issue' && ` · ${work.data.series} #${work.data.issueNumber}`}
                     </p>
@@ -270,6 +279,9 @@ const kindLabel = TITLE_KINDS[data.kind];
   }
 
   .kind {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
     margin: var(--sas-space-md) 0 var(--sas-space-2xs);
   }
 
@@ -407,6 +419,9 @@ const kindLabel = TITLE_KINDS[data.kind];
   }
 
   .reading-kind {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
     margin: var(--sas-space-2xs) 0 0;
     font-family: var(--sas-font-mono);
     font-size: 0.625rem;
