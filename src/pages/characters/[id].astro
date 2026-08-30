@@ -1,0 +1,298 @@
+---
+/*
+ * One character, and everywhere they turn up.
+ *
+ * Two sources feed one list: cast credits, which live on the title, and
+ * appearances, which live here and can record a character being discussed in a
+ * title they never appear in. Print is a third source, and needs no extra
+ * modelling — a comic points at the same character id a film does.
+ */
+
+import { getCollection, getEntry, render } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
+
+import Base from '../../layouts/Base.astro';
+import FactList from '../../components/FactList.astro';
+import TimelineList from '../../components/TimelineList.astro';
+import TimelineRow from '../../components/TimelineRow.astro';
+import {
+  APPEARANCE_TYPES,
+  formatCoverDate,
+  formatEpisodeCode,
+  formatYear,
+  READING_KINDS,
+  UNIT_KINDS,
+  type AppearanceType,
+} from '../../lib/format';
+import { READING_ICONS, UNIT_ICONS } from '../../lib/icons';
+import Icon from '../../components/Icon.astro';
+import { href } from '../../lib/href';
+import {
+  characterAppearances,
+  indexUnits,
+  resolveAppearances,
+  seriesCredits,
+  toTimelineUnits,
+} from '../../lib/timeline';
+
+export async function getStaticPaths() {
+  const characters = await getCollection('characters');
+  return characters.map((character) => ({
+    params: { id: character.id },
+    props: { character },
+  }));
+}
+
+interface Props {
+  character: CollectionEntry<'characters'>;
+}
+
+const { character } = Astro.props;
+const { data } = character;
+const { Content } = await render(character);
+
+const titles = await getCollection('titles');
+const episodes = await getCollection('episodes');
+
+const merged = characterAppearances(character.id, data.appearances, titles, episodes);
+
+/* A series credit says "is a regular on this show", which is not a moment, so it
+   cannot be a row on a chronology. The character's episode credits supply the
+   actual positions; this names the show. */
+const regularOn = seriesCredits(character.id, titles);
+const index = indexUnits(toTimelineUnits(titles, episodes));
+const appearances = resolveAppearances(merged, index, `characters/${character.id}`);
+
+/* Actor names, resolved once rather than per row. */
+const actorIds = [...new Set(appearances.map((row) => row.appearance.actorId).filter(Boolean))];
+const actors = new Map(
+  (await Promise.all(actorIds.map((id) => getEntry('people', id!))))
+    .filter((person) => person !== undefined)
+    .map((person) => [person.id, person.data.name]),
+);
+
+const inPrint = (await getCollection('reading'))
+  .filter((work) => work.data.characters.some((entry) => entry.id === character.id))
+  .sort((a, b) => a.data.published.localeCompare(b.data.published));
+
+const castCount = appearances.filter((row) => row.appearance.actorId).length;
+const mentionCount = appearances.length - castCount;
+
+const facts = [
+  { label: 'On screen', value: String(appearances.length) },
+  ...(mentionCount > 0 ? [{ label: 'Of those, mentions', value: String(mentionCount) }] : []),
+  ...(inPrint.length > 0 ? [{ label: 'In print', value: String(inPrint.length) }] : []),
+  ...(regularOn.length > 0
+    ? [{ label: 'Series regular', value: regularOn.map((s) => s.data.title).join(', ') }]
+    : []),
+  ...(data.aka.length > 0 ? [{ label: 'Also known as', value: data.aka.join(', ') }] : []),
+];
+---
+
+<Base title={data.name} status="Character" description={data.summary}>
+  <article data-accent="cyan">
+    <header class="hero">
+      <p class="sas-stamp">Character</p>
+      <h1 class="sas-glow-text">{data.name}</h1>
+      <p class="lede">{data.summary}</p>
+    </header>
+
+    <div class="layout">
+      <div class="main">
+        <section class="sas-prose"><Content /></section>
+
+        {
+          regularOn.length > 0 && (
+            <p class="regular">
+              Credited as a regular on{' '}
+              {regularOn.map((series, i) => (
+                <>
+                  {i > 0 && ', '}
+                  <a href={href(`titles/${series.id}`)}>{series.data.title}</a>
+                </>
+              ))}
+              . A series is not one point in the chronology, so the episodes
+              below carry the positions rather than the show.
+            </p>
+          )
+        }
+
+        <section aria-labelledby="screen-heading">
+          <h2 class="section-stamp" id="screen-heading">On screen, in order</h2>
+          {
+            appearances.length > 0 ? (
+              <TimelineList>
+                {appearances.map(({ appearance, unit }) => (
+                  <TimelineRow
+                    href={href(`${unit.collection}/${unit.id}`)}
+                    name={unit.name}
+                    kind={UNIT_KINDS[unit.kind]}
+                    icon={UNIT_ICONS[unit.kind]}
+                    accent={unit.accent}
+                    context={
+                      unit.series
+                        ? `${unit.series.name} · ${formatEpisodeCode(unit.series.season, unit.series.episode)}`
+                        : undefined
+                    }
+                    setting={unit.setting}
+                    year={formatYear(unit.releaseDate)}
+                    badge={
+                      appearance.actorId
+                        ? (actors.get(appearance.actorId) ?? APPEARANCE_TYPES[appearance.type as AppearanceType])
+                        : APPEARANCE_TYPES[appearance.type as AppearanceType]
+                    }
+                    scene={appearance.scene}
+                    note={appearance.note}
+                  />
+                ))}
+              </TimelineList>
+            ) : (
+              <p class="empty">No screen appearances in the catalogue yet.</p>
+            )
+          }
+          {
+            mentionCount > 0 && (
+              <p class="footnote">
+                Rows badged with an appearance type rather than an actor are
+                references — the character is discussed, not present. A cast list
+                alone cannot record those.
+              </p>
+            )
+          }
+        </section>
+
+        {
+          inPrint.length > 0 && (
+            <section aria-labelledby="print-heading">
+              <h2 class="section-stamp" id="print-heading">In print</h2>
+              <ul class="print">
+                {inPrint.map((work) => (
+                  <li>
+                    <a href={href(`reading/${work.id}`)}>{work.data.title}</a>
+                    <p class="print-meta">
+                      <Icon name={READING_ICONS[work.data.kind]} size={12} />
+                      {READING_KINDS[work.data.kind]}
+                      {work.data.kind === 'issue' && ` · ${work.data.series} #${work.data.issueNumber}`}
+                      {` · ${formatCoverDate(work.data.published)}`}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )
+        }
+      </div>
+
+      <aside class="side">
+        <FactList heading="Appearances" facts={facts} />
+        <p class="back"><a href={href('characters')}>All characters</a></p>
+      </aside>
+    </div>
+  </article>
+</Base>
+
+<style>
+  .hero {
+    margin-bottom: var(--sas-space-lg);
+  }
+
+  h1 {
+    margin: var(--sas-space-2xs) 0 0;
+    font-family: var(--sas-font-display);
+    font-size: clamp(1.45rem, 3.6vw, 2.25rem);
+    font-weight: 400;
+    line-height: 1.2;
+  }
+
+  .lede {
+    margin: var(--sas-space-sm) 0 0;
+    max-width: 62ch;
+    font-size: 1.0625rem;
+    color: var(--sas-text-muted);
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 17rem;
+    gap: var(--sas-space-xl);
+    align-items: start;
+  }
+
+  .main > section + section {
+    margin-top: var(--sas-space-lg);
+  }
+
+  .section-stamp {
+    margin: 0 0 var(--sas-space-sm);
+    font-family: var(--sas-font-mono);
+    font-size: 0.6875rem;
+    font-weight: 400;
+    letter-spacing: var(--sas-track-widest);
+    text-transform: uppercase;
+    color: var(--sas-accent-bright);
+  }
+
+  .regular {
+    margin: 0 0 var(--sas-space-md);
+    max-width: 62ch;
+    font-size: 0.9375rem;
+    color: var(--sas-text-muted);
+  }
+
+  .footnote,
+  .empty {
+    margin: var(--sas-space-sm) 0 0;
+    max-width: 62ch;
+    font-size: 0.9375rem;
+    color: var(--sas-text-dim);
+  }
+
+  .print {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    & li {
+      padding: var(--sas-space-sm) 0;
+      border-top: 1px solid var(--sas-hairline);
+    }
+  }
+
+  .print-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin: var(--sas-space-2xs) 0 0;
+    font-family: var(--sas-font-mono);
+    font-size: 0.625rem;
+    letter-spacing: var(--sas-track-wide);
+    text-transform: uppercase;
+    color: var(--sas-text-dim);
+  }
+
+  .side {
+    display: grid;
+    gap: var(--sas-space-md);
+    position: sticky;
+    top: 6rem;
+  }
+
+  .back {
+    margin: 0;
+    font-family: var(--sas-font-mono);
+    font-size: 0.625rem;
+    letter-spacing: var(--sas-track-wide);
+    text-transform: uppercase;
+  }
+
+  @media (max-width: 62rem) {
+    .layout {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--sas-space-lg);
+    }
+
+    .side {
+      position: static;
+    }
+  }
+</style>

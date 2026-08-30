@@ -28,12 +28,17 @@ Universe, with three things a plain catalogue doesn't give you:
 
 ## Status
 
-Scaffolded, styled and deploying, with the content model now in place. The
-landing page proves the build and deploy pipeline works and carries the site's
-visual language; the catalogue itself holds only a handful of seed entries
-proving the schema. The features above are the plan, not the present.
+All three features above are built and browsable — on a seed catalogue of four
+titles, two episodes, nine threads and four comics and books. The machinery is
+finished; filling it with a real catalogue is content work, not code.
 
-Content is authored as Markdown and validated against Zod schemas at build time:
+You can walk the timeline — grouped into eras, with the decades it skips drawn
+rather than implied, and WandaVision's episodes interleaved between the films —
+open a thread like the Tesseract and see every appearance in order, or open
+Howard Stark and find him cast in one film and merely discussed in another.
+
+Everything is static HTML with no JavaScript at all. Content is authored as
+Markdown and validated against Zod schemas at build time:
 films, series and shorts as `titles`, episodes as their own entries — because a
 series spans many points on the in-universe timeline, not one — and comics,
 collected editions and prose books as `reading`, each carrying why it is worth
@@ -42,13 +47,14 @@ reading alongside a given title. Both sides point at shared `people` and
 gathers appearances across film, television and print. `entities` covers the
 in-universe things worth following — objects, places, realities, organisations,
 events — each carrying the list of moments it turns up in, which is what the
-cross-reference feature reads. Nothing renders it yet.
-See [CLAUDE.md](CLAUDE.md#content-and-data-model-current-except-cross-references).
+cross-reference feature reads. See [CLAUDE.md](CLAUDE.md#content-and-data-model-current-except-cross-references).
 
 The look is an 80s Guardians-of-the-Galaxy space aesthetic: a deep indigo void,
 neon magenta and cyan, wide-tracked uppercase mono, a drifting starfield and a
-perspective grid horizon. Fonts are self-hosted and open-licence; no Marvel
-imagery is used anywhere. The palette and motifs are documented in
+perspective grid horizon. Fonts are self-hosted and open-licence; the icons are
+drawn in the repo; and where the design wants a poster or a cover, it draws an
+abstract "plate" whose composition is derived from the entry's id. **No Marvel
+imagery is used anywhere** — no posters, no stills, no comic covers. The palette and motifs are documented in
 [CLAUDE.md](CLAUDE.md#design-language-current).
 
 Built with [Astro](https://astro.build) and TypeScript. No server, no database:
@@ -62,6 +68,7 @@ Requires Node.js 22.12 or newer.
 npm install
 npm run dev      # dev server with hot reload
 npm run check    # typecheck
+npm test         # unit tests
 npm run build    # production build to dist/
 npm run preview  # serve the built output
 ```

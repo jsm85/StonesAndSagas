@@ -1,0 +1,14 @@
+---
+/* The grid every index lays its cards out on. Auto-fill, so one card does not
+   stretch to full width and six do not crush. */
+---
+
+<div class="grid"><slot /></div>
+
+<style>
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(19rem, 100%), 1fr));
+    gap: var(--sas-space-md);
+  }
+</style>

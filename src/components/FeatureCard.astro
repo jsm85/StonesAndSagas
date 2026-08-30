@@ -2,13 +2,11 @@
 /*
  * A card for one planned feature.
  *
- * The design mock puts a film still at the top of each of these. We cannot ship
- * one — studio stills are exactly the copyrighted media the project's IP rules
- * prohibit. So the image area is a "plate": an abstract, procedurally drawn
- * gradient keyed to the card's accent colour. It is generated from CSS, so it
- * is self-made by construction, weighs nothing, and holds the composition the
- * design wants without borrowing anyone's artwork.
+ * The image area is a plate — see Plate.astro for what that is and why the
+ * design has one instead of a film still.
  */
+
+import Plate from './Plate.astro';
 
 type Accent = 'magenta' | 'cyan' | 'amber';
 
@@ -18,17 +16,21 @@ interface Props {
   title: string;
   body: string;
   accent: Accent;
+  /* Where the feature actually lives, now that all three do. */
+  href: string;
+  cta: string;
 }
 
-const { label, title, body, accent } = Astro.props;
+const { label, title, body, accent, href, cta } = Astro.props;
 ---
 
 <article class="feature-card" data-accent={accent}>
-  <div class="plate" aria-hidden="true"></div>
+  <Plate accent={accent} />
   <div class="feature-body">
     <p class="feature-label">{label}</p>
     <h3 class="feature-title">{title}</h3>
     <p class="feature-text">{body}</p>
+    <p class="feature-cta"><a href={href}>{cta} →</a></p>
   </div>
 </article>
 
@@ -50,44 +52,32 @@ const { label, title, body, accent } = Astro.props;
     }
   }
 
-  /* Each accent picks its own hue for the plate and the eyebrow. Set once here
-     so the card body below can stay accent-agnostic. */
-  .feature-card[data-accent='magenta'] {
-    --card-accent: var(--sas-magenta);
-    --card-accent-bright: var(--sas-magenta-bright);
-  }
-
-  .feature-card[data-accent='cyan'] {
-    --card-accent: var(--sas-cyan);
-    --card-accent-bright: var(--sas-cyan-bright);
-  }
-
-  .feature-card[data-accent='amber'] {
-    --card-accent: var(--sas-amber);
-    --card-accent-bright: var(--sas-amber);
-  }
-
-  /* Two nebula blooms and a scatter of stars — the same vocabulary as the page
-     backdrop, compressed into a 9.5rem band.
-     Every stop is a soft radial: an earlier version drew a 1px horizon line
-     across the plate, and a hard full-width edge reads as a progress bar, not
-     as light. The accent glow is pushed off-centre and kept well inside the
-     plate's width so it stays a glow rather than a band. */
-  .plate {
-    height: 9.5rem;
-    border-bottom: 1px solid var(--sas-hairline);
-    background-color: var(--sas-void-deep);
-    background-image:
-      radial-gradient(1.2px 1.2px at 24% 30%, rgb(255 255 255 / 0.9) 50%, transparent 51%),
-      radial-gradient(1px 1px at 68% 18%, rgb(255 255 255 / 0.7) 50%, transparent 51%),
-      radial-gradient(1.4px 1.4px at 82% 62%, rgb(200 225 255 / 0.6) 50%, transparent 51%),
-      radial-gradient(44% 52% at 28% 96%, color-mix(in oklab, var(--card-accent) 60%, transparent), transparent 70%),
-      radial-gradient(58% 78% at 86% -12%, oklch(0.62 0.14 255 / 0.38), transparent 70%);
-    background-repeat: no-repeat;
+  .feature-card {
+    position: relative;
   }
 
   .feature-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
     padding: var(--sas-space-md) var(--sas-space-md) var(--sas-space-lg);
+  }
+
+  /* Pushed to the bottom so the three cards' links line up whatever the body
+     length, and stretched over the whole card so the card is one link. */
+  .feature-cta {
+    margin: auto 0 0;
+    padding-top: var(--sas-space-md);
+    font-family: var(--sas-font-mono);
+    font-size: 0.625rem;
+    letter-spacing: var(--sas-track-wider);
+    text-transform: uppercase;
+
+    & a::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+    }
   }
 
   .feature-label {
@@ -96,7 +86,7 @@ const { label, title, body, accent } = Astro.props;
     font-size: 0.625rem;
     letter-spacing: var(--sas-track-widest);
     text-transform: uppercase;
-    color: var(--card-accent-bright);
+    color: var(--sas-accent-bright);
   }
 
   .feature-title {

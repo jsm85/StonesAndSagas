@@ -1,0 +1,105 @@
+---
+/*
+ * The stand-in for a comic cover.
+ *
+ * A reading entry has no artwork and never will: covers are the part of a comic
+ * the IP rules specifically exclude, and the schema has nowhere to put one. But
+ * a list of printed works with no visual at all reads as a spreadsheet, so this
+ * gives each one the *shape* of a cover — portrait, bordered, with the series
+ * and number set in the display face, over the same plate every other card uses.
+ *
+ * It is deliberately not a pastiche of a Marvel cover: no trade dress, no
+ * corner box, no logo. A panel with type on it.
+ */
+
+import Plate from './Plate.astro';
+import Icon from './Icon.astro';
+import type { IconName } from '../lib/icons';
+
+interface Props {
+  seed: string;
+  accent: 'magenta' | 'cyan' | 'amber';
+  kind: IconName;
+  /* The series for an issue, the publisher or format for anything else. */
+  eyebrow?: string;
+  /* '#39' for an issue; nothing for a book. */
+  number?: string;
+  title: string;
+  date: string;
+}
+
+const { seed, accent, kind, eyebrow, number, title, date } = Astro.props;
+---
+
+<div class="cover" data-accent={accent}>
+  <Plate accent={accent} size="cover" seed={seed}>
+    <div class="face">
+      <p class="eyebrow">
+        <Icon name={kind} size={12} />
+        {eyebrow && <span>{eyebrow}</span>}
+      </p>
+      {number && <p class="number">{number}</p>}
+      <div class="foot">
+        <p class="title">{title}</p>
+        <p class="date">{date}</p>
+      </div>
+    </div>
+  </Plate>
+</div>
+
+<style>
+  .cover {
+    width: 100%;
+  }
+
+  .face {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    padding: var(--sas-space-sm);
+  }
+
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin: 0;
+    font-family: var(--sas-font-mono);
+    font-size: 0.5625rem;
+    letter-spacing: var(--sas-track-wide);
+    text-transform: uppercase;
+    color: var(--sas-accent-bright);
+  }
+
+  /* The issue number is the one piece of display type on a card, which is what
+     makes a shelf of these scannable at a glance. */
+  .number {
+    margin: var(--sas-space-xs) 0 0;
+    font-family: var(--sas-font-display);
+    font-size: clamp(1.25rem, 5vw, 1.75rem);
+    line-height: 1;
+    color: var(--sas-text);
+  }
+
+  .foot {
+    margin-top: auto;
+  }
+
+  .title {
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.35;
+    color: var(--sas-text);
+  }
+
+  .date {
+    margin: var(--sas-space-2xs) 0 0;
+    font-family: var(--sas-font-mono);
+    font-size: 0.5625rem;
+    letter-spacing: var(--sas-track-wide);
+    text-transform: uppercase;
+    color: var(--sas-text-dim);
+  }
+</style>

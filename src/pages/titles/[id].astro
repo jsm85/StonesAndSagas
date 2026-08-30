@@ -1,0 +1,477 @@
+---
+/*
+ * One title: a film, a series or a short.
+ *
+ * Everything that points *at* this title is gathered here by scanning — cast is
+ * on the title itself, but references live on the entity and recommendations
+ * live on the reading entry, both by design. At this size the scans are free,
+ * and the model is what makes them possible at all: nothing is matched on a
+ * string.
+ */
+
+import { getCollection, getEntry, render } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
+
+import Base from '../../layouts/Base.astro';
+import FactList from '../../components/FactList.astro';
+import Plate from '../../components/Plate.astro';
+import TimelineList from '../../components/TimelineList.astro';
+import TimelineRow from '../../components/TimelineRow.astro';
+import {
+  APPEARANCE_TYPES,
+  formatCertification,
+  formatDate,
+  formatEpisodeCode,
+  formatRuntime,
+  formatYear,
+  READING_KINDS,
+  RELATIONSHIPS,
+  TITLE_KINDS,
+  UNIT_KINDS,
+  type AppearanceType,
+  type Relationship,
+} from '../../lib/format';
+import { ENTITY_ICONS, READING_ICONS, TITLE_ICONS, UNIT_ICONS } from '../../lib/icons';
+import Icon from '../../components/Icon.astro';
+import { href } from '../../lib/href';
+import { referencesTo, unitKey } from '../../lib/timeline';
+
+export async function getStaticPaths() {
+  const titles = await getCollection('titles');
+  return titles.map((title) => ({ params: { id: title.id }, props: { title } }));
+}
+
+interface Props {
+  title: CollectionEntry<'titles'>;
+}
+
+const { title } = Astro.props;
+const { data } = title;
+const { Content } = await render(title);
+
+/* --- Credits -------------------------------------------------------------- */
+
+const creditIds = data.kind === 'series' ? data.creators : data.directors;
+const credits = (await Promise.all(creditIds.map((person) => getEntry(person)))).filter(
+  (person) => person !== undefined,
+);
+
+const cast = await Promise.all(
+  [...data.cast]
+    .sort((a, b) => (a.billing ?? Infinity) - (b.billing ?? Infinity))
+    .map(async (member) => ({
+      character: await getEntry(member.character),
+      actor: await getEntry(member.actor),
+      note: member.note,
+    })),
+);
+
+/* --- Facts ---------------------------------------------------------------- */
+
+const facts: { label: string; value: string }[] = [];
+
+if (data.kind === 'series') {
+  facts.push({ label: 'First aired', value: formatDate(data.firstAired) });
+  if (data.lastAired) facts.push({ label: 'Last aired', value: formatDate(data.lastAired) });
+} else {
+  facts.push({ label: 'Released', value: formatDate(data.releaseDate) });
+  facts.push({ label: 'Runtime', value: formatRuntime(data.runtimeMinutes) });
+}
+
+if (data.certification) {
+  facts.push({ label: 'Certificate', value: formatCertification(data.certification) });
+}
+
+if (data.kind !== 'series') {
+  facts.push({ label: 'Timeline', value: data.timeline.setting ?? `Position ${data.timeline.order}` });
+  const reality = data.timeline.reality ? await getEntry(data.timeline.reality) : undefined;
+  if (reality) facts.push({ label: 'Reality', value: reality.data.name });
+}
+
+/* --- Episodes, for a series ----------------------------------------------- */
+
+const episodes =
+  data.kind === 'series'
+    ? (await getCollection('episodes'))
+        .filter((episode) => episode.data.series.id === title.id)
+        .sort((a, b) => a.data.season - b.data.season || a.data.episode - b.data.episode)
+    : [];
+
+/* --- What this title is referenced by -------------------------------------- */
+
+const key = unitKey('titles', title.id);
+const entityRefs = referencesTo(key, await getCollection('entities'));
+const characterRefs = referencesTo(key, await getCollection('characters'));
+
+/* --- Reading recommended against it ---------------------------------------- */
+
+const reading = (await getCollection('reading'))
+  .map((work) => ({
+    work,
+    relation: work.data.related.find((relation) => relation.title.id === title.id),
+  }))
+  .filter((row) => row.relation !== undefined)
+  .sort((a, b) => a.work.data.published.localeCompare(b.work.data.published));
+
+const kindLabel = TITLE_KINDS[data.kind];
+---
+
+<Base
+  title={data.title}
+  status={`${kindLabel} · ${data.kind === 'series' ? formatYear(data.firstAired) : formatYear(data.releaseDate)}`}
+  description={data.summary}
+>
+  <article data-accent={data.accent}>
+    <header class="hero">
+      <Plate
+        accent={data.accent}
+        size="hero"
+        seed={title.id}
+        image={data.images.banner ?? data.images.poster}
+      />
+      <p class="sas-stamp kind">
+        <Icon name={TITLE_ICONS[data.kind]} size={15} />
+        {kindLabel}
+      </p>
+      <h1 class="sas-glow-text">{data.title}</h1>
+      <p class="lede">{data.summary}</p>
+      {
+        (data.images.banner ?? data.images.poster) && (
+          <p class="attribution">
+            Image via <a href={(data.images.banner ?? data.images.poster)!.source}>its official source</a>.
+          </p>
+        )
+      }
+    </header>
+
+    <div class="layout">
+      <div class="main">
+        <section class="prose sas-prose"><Content /></section>
+
+        {
+          cast.length > 0 && (
+            <section aria-labelledby="cast-heading">
+              <h2 class="section-stamp" id="cast-heading">Cast</h2>
+              <ul class="cast">
+                {cast.map((member) => (
+                  <li>
+                    {member.character ? (
+                      <a class="character" href={href(`characters/${member.character.id}`)}>
+                        {member.character.data.name}
+                      </a>
+                    ) : (
+                      <span class="character">Unknown character</span>
+                    )}
+                    <span class="played">{member.actor?.data.name ?? 'Unknown'}</span>
+                    {member.note && <span class="note">{member.note}</span>}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )
+        }
+
+        {
+          episodes.length > 0 && (
+            <section aria-labelledby="episodes-heading">
+              <h2 class="section-stamp" id="episodes-heading">Episodes</h2>
+              <p class="section-note">
+                Each episode takes its own place in the chronology, which is why a
+                series carries no timeline position of its own.
+              </p>
+              <TimelineList>
+                {episodes.map((episode) => (
+                  <TimelineRow
+                    href={href(`episodes/${episode.id}`)}
+                    name={episode.data.title}
+                    kind={UNIT_KINDS.episode}
+                    icon={UNIT_ICONS.episode}
+                    accent={episode.data.accent ?? data.accent}
+                    context={formatEpisodeCode(episode.data.season, episode.data.episode)}
+                    setting={episode.data.timeline.setting}
+                    year={formatYear(episode.data.releaseDate)}
+                    note={episode.data.summary}
+                  />
+                ))}
+              </TimelineList>
+            </section>
+          )
+        }
+
+        {
+          (entityRefs.length > 0 || characterRefs.length > 0) && (
+            <section aria-labelledby="threads-heading">
+              <h2 class="section-stamp" id="threads-heading">Threads running through it</h2>
+              <ul class="threads">
+                {entityRefs.map(({ source, appearance }) => (
+                  <li>
+                    <a href={href(`threads/${source.id}`)}>{source.data.name}</a>
+                    <span class="badge">{APPEARANCE_TYPES[appearance.type as AppearanceType]}</span>
+                    {appearance.scene && <p class="scene">{appearance.scene}</p>}
+                  </li>
+                ))}
+                {characterRefs.map(({ source, appearance }) => (
+                  <li>
+                    <a href={href(`characters/${source.id}`)}>{source.data.name}</a>
+                    <span class="badge">{APPEARANCE_TYPES[appearance.type as AppearanceType]}</span>
+                    {appearance.scene && <p class="scene">{appearance.scene}</p>}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )
+        }
+
+        {
+          reading.length > 0 && (
+            <section aria-labelledby="reading-heading">
+              <h2 class="section-stamp" id="reading-heading">Further reading</h2>
+              <ul class="reading">
+                {reading.map(({ work, relation }) => (
+                  <li>
+                    <p class="reading-head">
+                      <a href={href(`reading/${work.id}`)}>{work.data.title}</a>
+                      <span class="badge">{RELATIONSHIPS[relation!.relationship as Relationship]}</span>
+                    </p>
+                    <p class="reading-kind">
+                      <Icon name={READING_ICONS[work.data.kind]} size={12} />
+                      {READING_KINDS[work.data.kind]}
+                      {work.data.kind === 'issue' && ` · ${work.data.series} #${work.data.issueNumber}`}
+                    </p>
+                    {relation!.note && <p class="reading-note">{relation!.note}</p>}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )
+        }
+      </div>
+
+      <aside class="side">
+        <FactList heading="Details" facts={facts} />
+
+        {
+          credits.length > 0 && (
+            <div class="sas-panel credits">
+              <p class="panel-heading">{data.kind === 'series' ? 'Created by' : 'Directed by'}</p>
+              <ul>
+                {credits.map((person) => (
+                  <li>{person.data.name}</li>
+                ))}
+              </ul>
+            </div>
+          )
+        }
+
+        <p class="back">
+          <a href={href('titles')}>All titles</a>
+          {' · '}
+          <a href={href('timeline')}>Timeline</a>
+        </p>
+      </aside>
+    </div>
+  </article>
+</Base>
+
+<style>
+  .hero {
+    margin-bottom: var(--sas-space-lg);
+  }
+
+  .kind {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin: var(--sas-space-md) 0 var(--sas-space-2xs);
+  }
+
+  h1 {
+    margin: 0;
+    font-family: var(--sas-font-display);
+    font-size: clamp(1.45rem, 3.6vw, 2.25rem);
+    font-weight: 400;
+    line-height: 1.2;
+  }
+
+  .lede {
+    margin: var(--sas-space-sm) 0 0;
+    max-width: 62ch;
+    font-size: 1.0625rem;
+    color: var(--sas-text-muted);
+  }
+
+  .attribution {
+    margin: var(--sas-space-xs) 0 0;
+    font-family: var(--sas-font-mono);
+    font-size: 0.625rem;
+    letter-spacing: var(--sas-track-wide);
+    text-transform: uppercase;
+    color: var(--sas-text-dim);
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 17rem;
+    gap: var(--sas-space-xl);
+    align-items: start;
+  }
+
+  .main > section + section {
+    margin-top: var(--sas-space-lg);
+  }
+
+  .section-stamp {
+    margin: 0 0 var(--sas-space-sm);
+    font-family: var(--sas-font-mono);
+    font-size: 0.6875rem;
+    font-weight: 400;
+    letter-spacing: var(--sas-track-widest);
+    text-transform: uppercase;
+    color: var(--sas-accent-bright);
+  }
+
+  .section-note {
+    margin: calc(var(--sas-space-sm) * -1) 0 var(--sas-space-sm);
+    max-width: 62ch;
+    font-size: 0.9375rem;
+    color: var(--sas-text-dim);
+  }
+
+  /* --- Cast --------------------------------------------------------------- */
+
+  .cast {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(15rem, 100%), 1fr));
+    gap: var(--sas-space-sm);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    & li {
+      padding-left: var(--sas-space-sm);
+      border-left: 1px solid var(--sas-hairline);
+    }
+  }
+
+  .character {
+    display: block;
+    font-size: 1rem;
+    color: var(--sas-text);
+
+    &:hover {
+      color: var(--sas-cyan-bright);
+    }
+  }
+
+  .played,
+  .note {
+    display: block;
+    font-family: var(--sas-font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--sas-track-wide);
+    text-transform: uppercase;
+    color: var(--sas-text-dim);
+  }
+
+  .note {
+    color: var(--sas-amber);
+  }
+
+  /* --- Threads and reading ------------------------------------------------ */
+
+  .threads,
+  .reading {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: var(--sas-space-sm);
+  }
+
+  .threads li,
+  .reading li {
+    padding: var(--sas-space-sm) 0;
+    border-top: 1px solid var(--sas-hairline);
+  }
+
+  .badge {
+    margin-left: 0.6em;
+    padding: 0.15em 0.5em;
+    border: 1px solid var(--sas-hairline-warm);
+    font-family: var(--sas-font-mono);
+    font-size: 0.5625rem;
+    letter-spacing: var(--sas-track-wide);
+    text-transform: uppercase;
+    color: var(--sas-accent-bright);
+  }
+
+  .scene,
+  .reading-note {
+    margin: var(--sas-space-2xs) 0 0;
+    max-width: 62ch;
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    color: var(--sas-text-muted);
+  }
+
+  .reading-head {
+    margin: 0;
+  }
+
+  .reading-kind {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin: var(--sas-space-2xs) 0 0;
+    font-family: var(--sas-font-mono);
+    font-size: 0.625rem;
+    letter-spacing: var(--sas-track-wide);
+    text-transform: uppercase;
+    color: var(--sas-text-dim);
+  }
+
+  /* --- Sidebar ------------------------------------------------------------ */
+
+  .side {
+    display: grid;
+    gap: var(--sas-space-md);
+    position: sticky;
+    top: 6rem;
+  }
+
+  .panel-heading {
+    margin: 0 0 var(--sas-space-xs);
+    font-family: var(--sas-font-mono);
+    font-size: 0.625rem;
+    letter-spacing: var(--sas-track-widest);
+    text-transform: uppercase;
+    color: var(--sas-accent-bright);
+  }
+
+  .credits ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    color: var(--sas-text);
+  }
+
+  .back {
+    margin: 0;
+    font-family: var(--sas-font-mono);
+    font-size: 0.625rem;
+    letter-spacing: var(--sas-track-wide);
+    text-transform: uppercase;
+    color: var(--sas-text-dim);
+  }
+
+  @media (max-width: 62rem) {
+    .layout {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--sas-space-lg);
+    }
+
+    .side {
+      position: static;
+    }
+  }
+</style>

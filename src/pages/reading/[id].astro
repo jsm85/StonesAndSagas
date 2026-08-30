@@ -1,0 +1,357 @@
+---
+/*
+ * One printed work.
+ *
+ * Deliberately imageless. The IP rules allow titles, issue numbers and creator
+ * credits — facts — but not cover art or solicitation copy, so the schema has
+ * nowhere to put a cover and this page has nothing to render one from.
+ */
+
+import { getCollection, getEntry, render } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
+
+import Base from '../../layouts/Base.astro';
+import CoverPlate from '../../components/CoverPlate.astro';
+import FactList from '../../components/FactList.astro';
+import Icon from '../../components/Icon.astro';
+import {
+  CREATOR_ROLES,
+  formatCoverDate,
+  READING_KINDS,
+  RELATIONSHIPS,
+  type CreatorRole,
+  type Relationship,
+} from '../../lib/format';
+import { READING_ICONS } from '../../lib/icons';
+import { href } from '../../lib/href';
+
+export async function getStaticPaths() {
+  const reading = await getCollection('reading');
+  return reading.map((work) => ({ params: { id: work.id }, props: { work } }));
+}
+
+interface Props {
+  work: CollectionEntry<'reading'>;
+}
+
+const { work } = Astro.props;
+const { data } = work;
+const { Content } = await render(work);
+
+const creators = (
+  await Promise.all(
+    data.creators.map(async (credit) => ({
+      person: await getEntry(credit.person),
+      role: credit.role,
+    })),
+  )
+).filter((credit) => credit.person !== undefined);
+
+const related = await Promise.all(
+  data.related.map(async (relation) => ({
+    title: await getEntry(relation.title),
+    relationship: relation.relationship,
+    note: relation.note,
+  })),
+);
+
+const characters = (
+  await Promise.all(data.characters.map((character) => getEntry(character)))
+).filter((character) => character !== undefined);
+
+const facts = [
+  { label: 'Kind', value: READING_KINDS[data.kind] },
+  ...(data.kind === 'issue'
+    ? [{ label: 'Issue', value: `${data.series} #${data.issueNumber}` }]
+    : []),
+  ...(data.kind === 'collection' ? [{ label: 'Collects', value: data.collects }] : []),
+  {
+    label: data.kind === 'issue' ? 'Cover date' : 'Published',
+    value: formatCoverDate(data.published),
+  },
+  ...(data.publisher ? [{ label: 'Publisher', value: data.publisher }] : []),
+  ...(data.kind !== 'issue' && data.isbn ? [{ label: 'ISBN', value: data.isbn }] : []),
+];
+
+const accents = { issue: 'magenta', collection: 'cyan', book: 'amber' } as const;
+const accent = accents[data.kind];
+---
+
+<Base title={data.title} status={READING_KINDS[data.kind]} description={data.summary}>
+  <article data-accent={accent}>
+    <header class="hero">
+      <p class="sas-stamp">
+        <Icon name={READING_ICONS[data.kind]} size={15} />
+        {READING_KINDS[data.kind]}
+        {data.kind === 'issue' && <span class="dim">{data.series} #{data.issueNumber}</span>}
+      </p>
+      <h1 class="sas-glow-text">{data.title}</h1>
+      <p class="lede">{data.summary}</p>
+    </header>
+
+    <div class="layout">
+      <div class="main">
+        <section class="sas-prose"><Content /></section>
+
+        <section aria-labelledby="related-heading">
+          <h2 class="section-stamp" id="related-heading">Read alongside</h2>
+          <ul class="related">
+            {
+              related.map((relation) => (
+                <li>
+                  <p class="related-head">
+                    {relation.title ? (
+                      <a href={href(`titles/${relation.title.id}`)}>{relation.title.data.title}</a>
+                    ) : (
+                      <span>Unknown title</span>
+                    )}
+                    <span class="badge">{RELATIONSHIPS[relation.relationship as Relationship]}</span>
+                  </p>
+                  {relation.note && <p class="related-note">{relation.note}</p>}
+                </li>
+              ))
+            }
+          </ul>
+        </section>
+
+        {
+          characters.length > 0 && (
+            <section aria-labelledby="characters-heading">
+              <h2 class="section-stamp" id="characters-heading">Characters</h2>
+              <p class="related-note">
+                The same entries the films point at, which is what lets a
+                character's page list a film, an episode and an issue together.
+              </p>
+              <ul class="chips">
+                {characters.map((character) => (
+                  <li>
+                    <a href={href(`characters/${character.id}`)}>{character.data.name}</a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )
+        }
+      </div>
+
+      <aside class="side">
+        <div class="cover">
+          <CoverPlate
+            seed={work.id}
+            accent={accent}
+            kind={READING_ICONS[data.kind]}
+            eyebrow={data.kind === 'issue' ? data.series : data.publisher}
+            number={data.kind === 'issue' ? `#${data.issueNumber}` : undefined}
+            title={data.title}
+            date={formatCoverDate(data.published)}
+          />
+          <p class="cover-note">
+            Not the cover. Cover art belongs to its publisher, so this is drawn
+            from the site's own palette instead.
+          </p>
+        </div>
+
+        <FactList heading="Publication" facts={facts} />
+
+        {
+          creators.length > 0 && (
+            <div class="sas-panel credits">
+              <p class="panel-heading">Credits</p>
+              <ul>
+                {creators.map((credit) => (
+                  <li>
+                    <span>{credit.person!.data.name}</span>
+                    <span class="role">{CREATOR_ROLES[credit.role as CreatorRole]}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )
+        }
+
+        {
+          data.official && (
+            <p class="official">
+              <a href={data.official}>Publisher's page →</a>
+            </p>
+          )
+        }
+
+        <p class="back"><a href={href('reading')}>All reading</a></p>
+      </aside>
+    </div>
+  </article>
+</Base>
+
+<style>
+  .hero {
+    margin-bottom: var(--sas-space-lg);
+  }
+
+  .sas-stamp {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75em;
+  }
+
+  .cover-note {
+    margin: var(--sas-space-xs) 0 0;
+    font-family: var(--sas-font-mono);
+    font-size: 0.5625rem;
+    line-height: 1.6;
+    letter-spacing: var(--sas-track-wide);
+    text-transform: uppercase;
+    color: var(--sas-text-dim);
+  }
+
+  .dim {
+    color: var(--sas-text-dim);
+  }
+
+  h1 {
+    margin: var(--sas-space-2xs) 0 0;
+    font-family: var(--sas-font-display);
+    font-size: clamp(1.35rem, 3.2vw, 2rem);
+    font-weight: 400;
+    line-height: 1.2;
+  }
+
+  .lede {
+    margin: var(--sas-space-sm) 0 0;
+    max-width: 62ch;
+    font-size: 1.0625rem;
+    color: var(--sas-text-muted);
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 17rem;
+    gap: var(--sas-space-xl);
+    align-items: start;
+  }
+
+  .main > section + section {
+    margin-top: var(--sas-space-lg);
+  }
+
+  .section-stamp {
+    margin: 0 0 var(--sas-space-sm);
+    font-family: var(--sas-font-mono);
+    font-size: 0.6875rem;
+    font-weight: 400;
+    letter-spacing: var(--sas-track-widest);
+    text-transform: uppercase;
+    color: var(--sas-accent-bright);
+  }
+
+  .related {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    & li {
+      padding: var(--sas-space-sm) 0;
+      border-top: 1px solid var(--sas-hairline);
+    }
+  }
+
+  .related-head {
+    margin: 0;
+  }
+
+  .badge {
+    margin-left: 0.6em;
+    padding: 0.15em 0.5em;
+    border: 1px solid var(--sas-hairline-warm);
+    font-family: var(--sas-font-mono);
+    font-size: 0.5625rem;
+    letter-spacing: var(--sas-track-wide);
+    text-transform: uppercase;
+    color: var(--sas-accent-bright);
+  }
+
+  .related-note {
+    margin: var(--sas-space-2xs) 0 0;
+    max-width: 62ch;
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    color: var(--sas-text-muted);
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sas-space-xs);
+    margin: var(--sas-space-sm) 0 0;
+    padding: 0;
+    list-style: none;
+
+    & li {
+      border: 1px solid var(--sas-hairline);
+      padding: 0.3em 0.7em;
+      font-family: var(--sas-font-mono);
+      font-size: 0.6875rem;
+      letter-spacing: var(--sas-track-wide);
+      text-transform: uppercase;
+    }
+  }
+
+  .side {
+    display: grid;
+    gap: var(--sas-space-md);
+    position: sticky;
+    top: 6rem;
+  }
+
+  .panel-heading {
+    margin: 0 0 var(--sas-space-xs);
+    font-family: var(--sas-font-mono);
+    font-size: 0.625rem;
+    letter-spacing: var(--sas-track-widest);
+    text-transform: uppercase;
+    color: var(--sas-accent-bright);
+  }
+
+  .credits ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    & li {
+      display: flex;
+      justify-content: space-between;
+      gap: var(--sas-space-sm);
+      padding: 0.2rem 0;
+      color: var(--sas-text);
+    }
+  }
+
+  .role {
+    font-family: var(--sas-font-mono);
+    font-size: 0.625rem;
+    letter-spacing: var(--sas-track-wide);
+    text-transform: uppercase;
+    color: var(--sas-text-dim);
+  }
+
+  .official,
+  .back {
+    margin: 0;
+    font-family: var(--sas-font-mono);
+    font-size: 0.625rem;
+    letter-spacing: var(--sas-track-wide);
+    text-transform: uppercase;
+  }
+
+  @media (max-width: 62rem) {
+    .layout {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--sas-space-lg);
+    }
+
+    .side {
+      position: static;
+    }
+  }
+</style>

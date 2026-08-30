@@ -20,11 +20,13 @@ because `&` is awkward in a URL. Use the right form for the context:
 Never render the site name to a visitor as "StonesAndSagas". In HTML, write the
 ampersand as `&amp;` where the context requires escaping.
 
-## Status: styled scaffold with a content model, seed content only [current]
+## Status: the catalogue renders, on seed content [current]
 
-The project is scaffolded, styled and deploys. The content model exists and is
-enforced at build time; what it holds is a **small seed set proving the schema**,
-not a catalogue. Tracked contents:
+The project is scaffolded, styled, tested and deploys, and the content model is
+now rendered: timeline, titles, episodes, threads, characters and reading all
+have pages. What the catalogue *holds* is still a **small seed set proving the
+schema** — four titles, two episodes, nine threads, four printed works. The
+machinery is built; the content is not. Tracked contents:
 
 ```
 .
@@ -35,10 +37,21 @@ not a catalogue. Tracked contents:
 │   └── favicon.svg      # self-made abstract mark, no Marvel imagery
 ├── src/
 │   ├── components/
+│   │   ├── CardGrid.astro        # the grid every index lays cards on
 │   │   ├── CosmicBackdrop.astro  # starfield + CRT scanline layers
-│   │   ├── FeatureCard.astro     # card with a procedural "plate" image
+│   │   ├── EntryCard.astro       # linked card for any index
+│   │   ├── FactList.astro        # dotted-leader metadata panel
+│   │   ├── CoverPlate.astro      # cover-shaped stand-in for a printed work
+│   │   ├── FeatureCard.astro     # landing-page feature card
+│   │   ├── Icon.astro            # the eleven glyphs, drawn here
+│   │   ├── PageIntro.astro       # stamp + title + lede, on every index
+│   │   ├── Plate.astro           # the procedural stand-in for artwork
 │   │   ├── SiteFooter.astro      # carries the fan-project disclaimer
-│   │   └── SiteHeader.astro      # sticky wordmark + telemetry pill
+│   │   ├── SiteHeader.astro      # sticky wordmark, nav + telemetry pill
+│   │   ├── TimelineList.astro    # <ol> for chronologies
+│   │   ├── TimelineRow.astro     # one row on any chronology
+│   │   ├── TimelineScale.astro   # the timeline's jump rail
+│   │   └── TimelineTrack.astro   # era bands, spine and gap markers
 │   ├── content/         # the catalogue itself
 │   │   ├── characters/  # one .md per character
 │   │   ├── entities/    # one .md per object, place, reality, group, event
@@ -49,8 +62,21 @@ not a catalogue. Tracked contents:
 │   ├── content.config.ts  # collection definitions + Zod schemas
 │   ├── layouts/
 │   │   └── Base.astro   # shared page shell
+│   ├── lib/             # the logic, with its tests beside it
+│   │   ├── eras.ts      # era banding, the gaps between them, release drift
+│   │   ├── format.ts    # dates, runtimes, labels for every schema enum
+│   │   ├── href.ts      # base-path-safe internal links
+│   │   ├── icons.ts     # which glyph stands for which kind
+│   │   ├── plate.ts     # per-entry plate composition, hashed from the id
+│   │   └── timeline.ts  # ordering, appearance resolution, reverse lookup
 │   ├── pages/
-│   │   └── index.astro  # landing page — styled, still content-free
+│   │   ├── characters/  # index + one page per character
+│   │   ├── episodes/    # one page per episode
+│   │   ├── reading/     # index + one page per printed work
+│   │   ├── threads/     # index + one page per entity — the headline feature
+│   │   ├── titles/      # index in release order + one page per title
+│   │   ├── index.astro  # landing page
+│   │   └── timeline.astro  # in-universe order
 │   └── styles/
 │       ├── fonts/       # self-hosted woff2 subsets + OFL licence
 │       └── theme.css    # design tokens and base elements
@@ -58,13 +84,14 @@ not a catalogue. Tracked contents:
 ├── package.json
 ├── package-lock.json
 ├── tsconfig.json
+├── vitest.config.ts
 ├── LICENSE
 ├── README.md
 └── CLAUDE.md
 ```
 
-Not built yet: a real catalogue, cross-reference records, and every page beyond
-the landing page — nothing yet renders the content collections.
+Not built yet: a real catalogue. Also absent by choice — search, filtering and
+pagination, none of which six titles need.
 
 Section tags below tell you how much to trust each one:
 
@@ -298,15 +325,126 @@ must switch all of them off** — the design runs several at once, which is a lo
 for anyone who has asked for less. The global block at the foot of `theme.css`
 handles this; do not add an animation that escapes it.
 
+### Shared pieces [current]
+
+Four things exist so components stop repeating themselves. Reach for these
+before writing new CSS:
+
+- **`data-accent`** on any element sets `--sas-accent` and `--sas-accent-bright`
+  from the three text-safe accents. Components reference those, never the mapping.
+- **`.sas-panel`** is the bordered, faintly gradient-filled box, with the accent
+  on its left edge.
+- **`.sas-prose`** wraps rendered Markdown bodies, measured at 66ch — prose is the
+  only thing on the site read continuously, and a 1180px line is not readable.
+- **`Plate.astro`** is the plate, in one place now that cards, title heroes and
+  episode heroes all want one. It also renders a licensed image when a title has
+  one, keeping the plate behind it so a blocked image degrades to the design.
+- **`Icon.astro`** holds every glyph. Nothing else draws an SVG inline.
+
+### Icons [current]
+
+Eleven glyphs, one per kind the catalogue labels, drawn in `Icon.astro` and
+mapped to the schema enums in `src/lib/icons.ts`. No icon library: a package
+brings a house style that is not this one, and eleven shapes this simple are
+smaller than the dependency that would draw them.
+
+The rules that keep them a set — follow them if you add one:
+
+- a 24×24 box, figure inside a 20×20 area, stroke-only at 1.5 units
+- `currentColor` and nothing else, so an icon takes the accent of whatever it
+  sits in and needs no per-accent variant
+- `aria-hidden`, always beside a text label and never instead of one
+
+**Draw for 12px, not for the proof sheet.** Icons render at 12–15px next to mono
+labels, and three of the first eleven failed there while looking fine at 64px: a
+ringed planet turned to mush, a detached spark read as a stray plus, and a
+branching timeline collapsed into a bare `<`. They became a globe, a narrow film
+gate and two overlapping rings. Render a candidate at the size it will actually
+be used before keeping it.
+
+`src/lib/icons.test.ts` reads `Icon.astro` and checks that every mapped name is
+really drawn — TypeScript can check that every kind *has* a glyph, but not that
+the glyph exists in the markup.
+
+### Plates differ per entry [current]
+
+`plateFigure(id)` in `src/lib/plate.ts` hashes the entry id into star and bloom
+positions, so a grid of cards is not the same gradient repeated. A hash rather
+than `Math.random()` deliberately: a static site is rebuilt constantly, and a
+plate that moved every build would put the whole site into the diff of every
+content edit. The ranges are clamped so the hash cannot pick something outside
+the design, and both properties are unit-tested.
+
 ### Images, and why there mostly aren't any
 
 The mock puts a poster or a film still in every card. **We cannot ship those** —
 see the [IP rules](#fan-content-and-ip-rules-hard-rule). The established
 alternative is a **plate**: an abstract, procedurally drawn CSS gradient keyed
-to an accent colour, as in `FeatureCard.astro`. Self-made by construction,
+to an accent colour, as in `Plate.astro`.
+
+**Comic covers are a firmer no than posters.** `titles` may carry an external
+`poster` or `banner` link, because the IP rules permit linking to an official
+source. `reading` deliberately cannot: covers are named in those rules, and the
+schema has nowhere to put one. A printed work renders `CoverPlate.astro`
+instead — the *shape* of a cover, carrying the series and issue number in the
+display face, drawn from the palette. It is not a pastiche: no trade dress, no
+corner box, no logo. If linked official covers are ever wanted, that is a
+deliberate relaxation of a documented decision and needs the owner's explicit
+yes on its own issue. Self-made by construction,
 weighs nothing, and holds the composition the design wants. Prefer a plate over
 hunting for a "safe" image. Avoid hard full-width edges in one — they read as a
 progress bar rather than as light.
+
+## The site itself [current]
+
+Eleven routes, all static, all rendered from the collections:
+
+| Route | Shows |
+| --- | --- |
+| `/` | landing page |
+| `/timeline` | every film, short and episode in in-universe order, in era bands |
+| `/titles`, `/titles/[id]` | the catalogue in **release** order, and one title |
+| `/episodes/[id]` | one episode |
+| `/threads`, `/threads/[id]` | entities, and every appearance of one, in order |
+| `/characters`, `/characters/[id]` | characters, and one across screen and print |
+| `/reading`, `/reading/[id]` | printed works, and one with its relations |
+
+Conventions worth keeping to:
+
+- **The timeline is a control, and still ships no JavaScript.** Era bands, a
+  spine with a node per unit, drawn markers for the decades the chronology
+  skips, and a sticky jump rail of anchor links. The one thing an island would
+  add is scroll-spying to highlight your position in the rail; that is not worth
+  being the first page on the site to ship one. Anchored rows carry
+  `scroll-margin-top` so a jump does not land under the sticky header — verified
+  in a browser, not assumed.
+- **Two orderings, two pages, no JavaScript.** Release order and in-universe
+  order are `/titles` and `/timeline` rather than one page with a toggle. A
+  toggle means shipping a client-side island for something two static pages do
+  better, on a site whose stated advantage is zero JS by default. Nothing on the
+  site ships any JavaScript today; keep it that way unless a feature genuinely
+  needs it.
+- **`/threads`, not `/entities`.** `entities` is the schema's word; *thread* is
+  the product's, and the one a visitor might type.
+- **Every internal link goes through `href()`** in `src/lib/href.ts`. A literal
+  `/titles/iron-man` resolves above the Pages base path and 404s in production
+  while working perfectly in dev — the worst shape a bug can take. There is one
+  join, and it is tested.
+- **Logic lives in `src/lib`, not in a page.** If a template starts sorting,
+  merging or resolving, it belongs in a module with tests. The three page-level
+  things worth knowing: appearances are resolved through `resolveAppearances`,
+  the reverse view ("what does this film reference") through `referencesTo`, and
+  a character's merged screen history through `characterAppearances`.
+- **A page throwing is the reference check.** `resolveAppearances` throws on a
+  pointer that resolves to nothing, which is what turns Astro's exit-0 warning
+  (see the caveat below) into a failed build for anything a page renders. It
+  also catches what the schema cannot express: an appearance pointing at a
+  series rather than a timeline unit. Do not soften it to a skipped row.
+- **A series credit is not a timeline row.** A series carries a cast list — the
+  regulars — but "is on this show" is not a moment. `characterAppearances`
+  excludes them and `seriesCredits` reports them separately; the character's
+  episode credits supply the actual positions. Expanding a regular across every
+  episode would invent appearances the data does not support.
 
 ## Content and data model [current, except cross-references]
 
@@ -385,6 +523,17 @@ Decisions worth knowing before you extend it:
 - **`timeline.order` is a bare sort key, not a date.** In-universe time is vague
   and occasionally circular; a number only has to compare correctly. Seed values
   are spaced in hundreds so a title can be inserted without renumbering.
+- **`timeline.year` is optional, and never sorted on.** It is the in-universe
+  year a unit opens in, and exists so `/timeline` can group era bands without
+  parsing a year back out of `setting`, which is a prose display string.
+  Structure a page needs belongs in the schema, not in a regular expression over
+  English. Units without a year band together as "Undated" rather than being
+  given a guess.
+- **Era bands are consecutive runs, not buckets.** `toEras` walks the units in
+  in-universe order and starts a band whenever the decade changes, so a
+  chronology that returns to an earlier decade gets a second band for it. The
+  order is the truth; the year only labels it. Reordering units to tidy the
+  decades together would be reordering the timeline.
 - **Every schema is a `strictObject`.** Zod's default is to *strip* unknown keys,
   which would silently swallow a misspelled field name. Strict turns that into a
   build failure — verified: `runtimeMins` fails with `Unrecognized key`.
@@ -500,11 +649,13 @@ under `engines` and pinned to 22 in both workflows).
 npm install      # or `npm ci` for an exact install from the lockfile
 npm run dev      # dev server with hot reload
 npm run check    # astro check — typecheck .astro/.ts
+npm test         # vitest run — the unit suite, once
+npm run test:watch  # vitest, left running
 npm run build    # production build to dist/
 npm run preview  # serve the built output locally
 ```
 
-All five were run in this repository and succeed. `npm run dev` and
+All of them were run in this repository and succeed. `npm run dev` and
 `npm run preview` serve under the base path — the site is at
 **`http://localhost:4321/StonesAndSagas/`**, and `http://localhost:4321/`
 correctly 404s. That is the base path working, not a bug.
@@ -549,8 +700,8 @@ no staging step, so treat `main` as production.
 
 Workflows live in `.github/workflows/`:
 
-- **`ci.yml`** — on pull requests: `npm ci`, `npm run check`, `npm run build`.
-  A PR that doesn't build should not be mergeable.
+- **`ci.yml`** — on pull requests: `npm ci`, `npm run check`, `npm test`,
+  `npm run build`. A PR that doesn't build should not be mergeable.
 - **`deploy.yml`** — on push to `main`: builds, uploads the Pages artifact and
   deploys. Carries `permissions: { contents: read, pages: write, id-token: write }`
   and a `pages` concurrency group with `cancel-in-progress: false`, so a running
@@ -584,13 +735,26 @@ cross-reference resolution and grouping, schema validation and transforms, date
 and URL helpers, anything parsing or reshaping content. Astro components
 rendering static markup mostly don't.
 
-> **[current] Prerequisite not yet met.** There is **no test runner installed**.
-> `package.json` has `dev`, `build`, `preview` and `check` — nothing else. The
-> only automated verification today is `npm run check` (`astro check`), which
-> runs in CI. **The rule above cannot be honoured until a runner is added**
-> (Vitest is the natural fit — Astro is Vite-based, so it needs little config).
-> Adding it and wiring `npm test` into `ci.yml` is its own issue. Until then, do
-> not claim a change is unit-tested.
+**The runner is Vitest** [current], installed as a dev dependency and wired into
+`ci.yml` between the typecheck and the build. `npm test` runs it once;
+`npm run test:watch` leaves it running. Tests live beside the code they cover as
+`src/**/*.test.ts` — no separate tree, because a helper and its tests being
+adjacent is what makes anyone open them.
+
+Astro is Vite-based, so Vitest needs almost no configuration. `vitest.config.ts`
+sets exactly one thing, and it is worth knowing about:
+
+```ts
+process.env.TZ = 'America/Los_Angeles';
+```
+
+Release dates are authored as bare days (`2008-05-02`) and parsed as midnight
+UTC. Rendered in local time they come out as 1 May for anyone west of Greenwich —
+every release reported a day early, on a site about chronology. The formatters in
+`src/lib/format.ts` pin the zone to UTC; running the suite in a US timezone is
+what makes removing that pin fail the tests on a UK machine, where the bug is
+otherwise invisible. Verified by mutation: deleting the pin fails with
+`expected '1 May 2008' to be '2 May 2008'`.
 
 Verification rules that apply regardless:
 

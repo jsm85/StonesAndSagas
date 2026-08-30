@@ -1,0 +1,254 @@
+---
+/*
+ * One thread: every appearance of one thing, in in-universe order.
+ *
+ * This is the headline feature, and the page the whole content model was shaped
+ * to make possible. Appearances are authored on the entity — one file per
+ * thread, readable top to bottom — and resolved here against the timeline built
+ * from two separate collections.
+ */
+
+import { getCollection, getEntry, render } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
+
+import Base from '../../layouts/Base.astro';
+import FactList from '../../components/FactList.astro';
+import TimelineList from '../../components/TimelineList.astro';
+import TimelineRow from '../../components/TimelineRow.astro';
+import {
+  APPEARANCE_TYPES,
+  ENTITY_KINDS,
+  formatEpisodeCode,
+  formatYear,
+  UNIT_KINDS,
+  type AppearanceType,
+} from '../../lib/format';
+import { ENTITY_ICONS, UNIT_ICONS } from '../../lib/icons';
+import Icon from '../../components/Icon.astro';
+import { href } from '../../lib/href';
+import { indexUnits, resolveAppearances, toTimelineUnits } from '../../lib/timeline';
+
+export async function getStaticPaths() {
+  const entities = await getCollection('entities');
+  return entities.map((entity) => ({ params: { id: entity.id }, props: { entity } }));
+}
+
+interface Props {
+  entity: CollectionEntry<'entities'>;
+}
+
+const { entity } = Astro.props;
+const { data } = entity;
+const { Content } = await render(entity);
+
+const index = indexUnits(
+  toTimelineUnits(await getCollection('titles'), await getCollection('episodes')),
+);
+
+/* Throws on a pointer that resolves to nothing, which is the only thing
+   standing between a dead reference and a silently empty row: Astro reports an
+   invalid reference and then exits 0. */
+const appearances = resolveAppearances(data.appearances, index, `threads/${entity.id}`);
+
+const parent = data.partOf ? await getEntry(data.partOf) : undefined;
+const siblings = data.partOf
+  ? (await getCollection('entities'))
+      .filter((other) => other.id !== entity.id && other.data.partOf?.id === data.partOf!.id)
+      .sort((a, b) => a.data.name.localeCompare(b.data.name))
+  : [];
+
+const facts = [
+  { label: 'Kind', value: ENTITY_KINDS[data.kind] },
+  {
+    label: 'Appearances',
+    value: String(appearances.length),
+  },
+  ...(data.kind === 'reality' && data.designation
+    ? [{ label: 'Designation', value: data.designation }]
+    : []),
+  ...(data.kind === 'event' && data.timeline
+    ? [{ label: 'Occurs', value: data.timeline.setting ?? `Position ${data.timeline.order}` }]
+    : []),
+  ...(data.aka.length > 0 ? [{ label: 'Also known as', value: data.aka.join(', ') }] : []),
+];
+
+/* Objects lead in magenta, places and groups in cyan, events and realities in
+   amber — the same grouping the index uses. */
+const accents = {
+  object: 'magenta',
+  location: 'cyan',
+  organisation: 'cyan',
+  event: 'amber',
+  reality: 'amber',
+} as const;
+const accent = accents[data.kind];
+---
+
+<Base title={data.name} status={`Thread · ${ENTITY_KINDS[data.kind]}`} description={data.summary}>
+  <article data-accent={accent}>
+    <header class="hero">
+      <p class="sas-stamp kind">
+        <Icon name={ENTITY_ICONS[data.kind]} size={15} />
+        {ENTITY_KINDS[data.kind]}
+      </p>
+      <h1 class="sas-glow-text">{data.name}</h1>
+      <p class="lede">{data.summary}</p>
+      {
+        parent && (
+          <p class="parent">
+            One of <a href={href(`threads/${parent.id}`)}>{parent.data.name}</a>
+            {siblings.length > 0 && (
+              <>
+                {' · '}
+                {siblings.map((sibling, i) => (
+                  <>
+                    {i > 0 && ', '}
+                    <a href={href(`threads/${sibling.id}`)}>{sibling.data.name}</a>
+                  </>
+                ))}
+              </>
+            )}
+          </p>
+        )
+      }
+    </header>
+
+    <div class="layout">
+      <div class="main">
+        <section class="sas-prose"><Content /></section>
+
+        <section aria-labelledby="appearances-heading">
+          <h2 class="section-stamp" id="appearances-heading">
+            Every appearance, in order
+          </h2>
+          {
+            appearances.length > 0 ? (
+              <TimelineList>
+                {appearances.map(({ appearance, unit }) => (
+                  <TimelineRow
+                    href={href(`${unit.collection}/${unit.id}`)}
+                    name={unit.name}
+                    kind={UNIT_KINDS[unit.kind]}
+                    icon={UNIT_ICONS[unit.kind]}
+                    accent={accent}
+                    context={
+                      unit.series
+                        ? `${unit.series.name} · ${formatEpisodeCode(unit.series.season, unit.series.episode)}`
+                        : undefined
+                    }
+                    setting={unit.setting}
+                    year={formatYear(unit.releaseDate)}
+                    badge={APPEARANCE_TYPES[appearance.type as AppearanceType]}
+                    scene={appearance.scene}
+                    note={appearance.note}
+                  />
+                ))}
+              </TimelineList>
+            ) : (
+              <p class="empty">
+                Nothing in the catalogue references this yet. A reality is
+                usually in this position: it is the context a scene happens in
+                rather than a thing that appears in one.
+              </p>
+            )
+          }
+        </section>
+      </div>
+
+      <aside class="side">
+        <FactList heading="Thread" facts={facts} />
+        <p class="back"><a href={href('threads')}>All threads</a></p>
+      </aside>
+    </div>
+  </article>
+</Base>
+
+<style>
+  .hero {
+    margin-bottom: var(--sas-space-lg);
+  }
+
+  .kind {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+  }
+
+  h1 {
+    margin: var(--sas-space-2xs) 0 0;
+    font-family: var(--sas-font-display);
+    font-size: clamp(1.45rem, 3.6vw, 2.25rem);
+    font-weight: 400;
+    line-height: 1.2;
+  }
+
+  .lede {
+    margin: var(--sas-space-sm) 0 0;
+    max-width: 62ch;
+    font-size: 1.0625rem;
+    color: var(--sas-text-muted);
+  }
+
+  .parent {
+    margin: var(--sas-space-xs) 0 0;
+    font-family: var(--sas-font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--sas-track-wide);
+    text-transform: uppercase;
+    color: var(--sas-text-dim);
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 17rem;
+    gap: var(--sas-space-xl);
+    align-items: start;
+  }
+
+  .main > section + section {
+    margin-top: var(--sas-space-lg);
+  }
+
+  .section-stamp {
+    margin: 0 0 var(--sas-space-sm);
+    font-family: var(--sas-font-mono);
+    font-size: 0.6875rem;
+    font-weight: 400;
+    letter-spacing: var(--sas-track-widest);
+    text-transform: uppercase;
+    color: var(--sas-accent-bright);
+  }
+
+  .empty {
+    margin: 0;
+    max-width: 62ch;
+    font-size: 0.9375rem;
+    color: var(--sas-text-dim);
+  }
+
+  .side {
+    display: grid;
+    gap: var(--sas-space-md);
+    position: sticky;
+    top: 6rem;
+  }
+
+  .back {
+    margin: 0;
+    font-family: var(--sas-font-mono);
+    font-size: 0.625rem;
+    letter-spacing: var(--sas-track-wide);
+    text-transform: uppercase;
+  }
+
+  @media (max-width: 62rem) {
+    .layout {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--sas-space-lg);
+    }
+
+    .side {
+      position: static;
+    }
+  }
+</style>

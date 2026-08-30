@@ -1,12 +1,25 @@
 ---
 /*
- * Sticky header: the wordmark, and a telemetry pill borrowed from the design's
- * "SIGNAL OK" badge.
+ * Sticky header: the wordmark, the navigation, and a telemetry pill borrowed
+ * from the design's "SIGNAL OK" badge.
  *
- * There is deliberately no navigation. The site is one page today, and a nav
- * pointing at routes that do not exist is worse than no nav at all. Add the
- * links when there is somewhere to go.
+ * The nav arrived with the catalogue — it was deliberately absent while the site
+ * was one page, since links to routes that do not exist are worse than no links.
+ * The current section is marked with aria-current, matched on the path prefix so
+ * a detail page still highlights its section.
  */
+
+import { href } from '../lib/href';
+
+const sections = [
+  { label: 'Timeline', path: 'timeline' },
+  { label: 'Titles', path: 'titles' },
+  { label: 'Threads', path: 'threads' },
+  { label: 'Characters', path: 'characters' },
+  { label: 'Reading', path: 'reading' },
+];
+
+const current = Astro.url.pathname;
 
 interface Props {
   /* What the telemetry pill reads. Kept honest — it reports the state of the
@@ -26,6 +39,23 @@ const { status } = Astro.props;
     </span>
   </a>
 
+  <nav class="nav" aria-label="Sections">
+    <ul>
+      {
+        sections.map((section) => (
+          <li>
+            <a
+              href={href(section.path)}
+              aria-current={current.startsWith(href(section.path)) ? 'page' : undefined}
+            >
+              {section.label}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </nav>
+
   <p class="telemetry">
     <span class="telemetry-light" aria-hidden="true"></span>
     <span>{status}</span>
@@ -33,6 +63,35 @@ const { status } = Astro.props;
 </header>
 
 <style>
+  .nav ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sas-space-md);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-family: var(--sas-font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--sas-track-wider);
+    text-transform: uppercase;
+  }
+
+  .nav a {
+    color: var(--sas-text-muted);
+
+    &:hover {
+      color: var(--sas-cyan-bright);
+    }
+
+    /* The current section keeps the magenta lead and a rule under it, so the
+       header says where you are without a second visual language. */
+    &[aria-current='page'] {
+      color: var(--sas-magenta-bright);
+      border-bottom: 1px solid var(--sas-magenta);
+      padding-bottom: 0.2em;
+    }
+  }
+
   .site-header {
     position: sticky;
     top: 0;
@@ -129,11 +188,25 @@ const { status } = Astro.props;
     animation: sas-pulse var(--sas-pulse-duration) ease-in-out infinite;
   }
 
+  /* Three things across one bar stops working well before the viewport gets
+     narrow. The nav is the one that wraps: it goes full width on its own line
+     under the wordmark and pill, rather than squeezing either. */
+  @media (width < 64rem) {
+    .site-header {
+      flex-wrap: wrap;
+      row-gap: var(--sas-space-sm);
+    }
+
+    .nav {
+      order: 3;
+      width: 100%;
+    }
+  }
+
   /* Below ~30rem the pill and the wordmark stop fitting side by side. The
      wordmark wins; the pill drops to its own line rather than being truncated. */
   @media (width < 30rem) {
     .site-header {
-      flex-wrap: wrap;
       gap: var(--sas-space-xs);
     }
   }

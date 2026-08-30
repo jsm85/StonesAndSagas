@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import FeatureCard from '../components/FeatureCard.astro';
+import { href } from '../lib/href';
 
 const description =
   'An unofficial fan guide to the characters and screen titles of the Marvel ' +
@@ -14,9 +15,12 @@ const buildLog: { label: string; state: 'online' | 'pending' }[] = [
   { label: 'GitHub Pages deploy', state: 'online' },
   { label: 'Visual theme', state: 'online' },
   { label: 'Content schemas', state: 'online' },
-  { label: 'Timeline', state: 'pending' },
+  { label: 'Timeline', state: 'online' },
+  { label: 'Cross-references', state: 'online' },
+  { label: 'Unit tests', state: 'online' },
 ];
 
+/* Each card now points somewhere, because each feature now exists. */
 const features = [
   {
     label: 'Two orderings',
@@ -26,6 +30,8 @@ const features = [
       'the order events occur in. Episodes take their own place on the ' +
       'timeline rather than hiding inside a series.',
     accent: 'magenta' as const,
+    href: href('timeline'),
+    cta: 'Open the timeline',
   },
   {
     label: 'Cross-references',
@@ -35,6 +41,8 @@ const features = [
       'and scene that touches it, laid out in timeline order rather than ' +
       'scattered across a dozen pages.',
     accent: 'cyan' as const,
+    href: href('threads'),
+    cta: 'Follow a thread',
   },
   {
     label: 'Further reading',
@@ -44,11 +52,13 @@ const features = [
       'and credits, linking out to official sources rather than reproducing ' +
       'anything.',
     accent: 'amber' as const,
+    href: href('reading'),
+    cta: 'See the reading',
   },
 ];
 ---
 
-<Base description={description}>
+<Base description={description} status="Phase 01 · Catalogue">
   <section class="hero">
     <div class="nebula" aria-hidden="true"></div>
     <div class="horizon" aria-hidden="true"></div>
@@ -78,9 +88,9 @@ const features = [
         }
       </ul>
       <p class="panel-note">
-        There is no catalogue here yet. This page exists to prove the build and
-        deployment pipeline works end to end — and now, that the visual
-        language does too.
+        The catalogue holds a seed set — four titles, two episodes, nine threads
+        and four works — enough to prove the model rather than to browse. What
+        is built is the machinery around it.
       </p>
     </aside>
   </section>

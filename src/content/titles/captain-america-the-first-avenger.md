@@ -25,6 +25,7 @@ cast:
     billing: 4
 timeline:
   order: 100
+  year: 1943
   setting: "1943–1945 — New York, the European theatre, the Arctic"
 ---
 

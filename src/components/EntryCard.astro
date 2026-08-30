@@ -1,0 +1,153 @@
+---
+/*
+ * A linked card in an index: a title, a thread, a character, a comic.
+ *
+ * One component rather than four near-identical ones. The indexes differ only in
+ * what they put in the eyebrow and the meta line, so those are props.
+ */
+
+import Plate from './Plate.astro';
+import Icon from './Icon.astro';
+import type { IconName } from '../lib/icons';
+
+interface Props {
+  href: string;
+  /* Mono eyebrow: the kind of thing this is. */
+  label: string;
+  /* The glyph for that kind. Decorative — the label stays either way. */
+  icon?: IconName;
+  title: string;
+  summary: string;
+  accent?: 'magenta' | 'cyan' | 'amber';
+  /* Short facts under the summary — year, runtime, certificate. */
+  meta?: string[];
+  /* Drop the plate for a denser list where the image adds nothing. */
+  plate?: boolean;
+  image?: { url: string; source: string; alt: string };
+  /* Entry id, so the plate's composition differs from its neighbours'. */
+  seed?: string;
+}
+
+const {
+  href,
+  label,
+  icon,
+  title,
+  summary,
+  accent = 'magenta',
+  meta = [],
+  plate = true,
+  image,
+  seed,
+} = Astro.props;
+---
+
+<article class="card" data-accent={accent}>
+  {plate && <Plate accent={accent} image={image} seed={seed} />}
+  <div class="body">
+    <p class="label">
+      {icon && <Icon name={icon} size={13} />}
+      <span>{label}</span>
+    </p>
+    {/* The whole card is clickable via this link's ::after, so the card stays
+        one link for a screen reader rather than three. */}
+    <h3 class="title"><a href={href}>{title}</a></h3>
+    <p class="summary">{summary}</p>
+    {
+      meta.length > 0 && (
+        <p class="meta">
+          {meta.map((item, i) => (
+            <>
+              {i > 0 && <span class="sep" aria-hidden="true">·</span>}
+              <span>{item}</span>
+            </>
+          ))}
+        </p>
+      )
+    }
+  </div>
+</article>
+
+<style>
+  .card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--sas-hairline);
+    background: linear-gradient(180deg, var(--sas-panel-top), var(--sas-panel-bottom));
+    transition:
+      border-color var(--sas-transition) ease,
+      transform var(--sas-transition) ease,
+      box-shadow var(--sas-transition) ease;
+
+    &:hover {
+      border-color: var(--sas-cyan);
+      transform: translateY(-4px);
+      box-shadow: 0 18px 40px -24px var(--sas-glow-cyan);
+    }
+  }
+
+  .body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    padding: var(--sas-space-md);
+  }
+
+  .label {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin: 0 0 var(--sas-space-2xs);
+    font-family: var(--sas-font-mono);
+    font-size: 0.625rem;
+    letter-spacing: var(--sas-track-widest);
+    text-transform: uppercase;
+    color: var(--sas-accent-bright);
+  }
+
+  .title {
+    margin: 0 0 var(--sas-space-xs);
+    font-size: 1.0625rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+
+    & a {
+      color: var(--sas-text);
+
+      /* Stretches the link over the whole card. */
+      &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+      }
+
+      &:hover {
+        color: var(--sas-cyan-bright);
+      }
+    }
+  }
+
+  .summary {
+    margin: 0;
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    color: var(--sas-text-muted);
+  }
+
+  .meta {
+    margin: var(--sas-space-sm) 0 0;
+    padding-top: var(--sas-space-xs);
+    border-top: 1px solid var(--sas-hairline);
+    font-family: var(--sas-font-mono);
+    font-size: 0.625rem;
+    letter-spacing: var(--sas-track-wide);
+    text-transform: uppercase;
+    color: var(--sas-text-dim);
+  }
+
+  .sep {
+    padding: 0 0.4em;
+    color: var(--sas-hairline-warm);
+  }
+</style>

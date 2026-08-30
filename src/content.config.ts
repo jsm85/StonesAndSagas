@@ -124,6 +124,20 @@ const certification = z.discriminatedUnion('system', [
  */
 const timelinePosition = z.strictObject({
   order: z.number(),
+  /*
+   * The in-universe year this opens in.
+   *
+   * Not a second sort key — `order` is still the only thing that sorts — but the
+   * fact a reader wants, and the one the timeline groups its era bands on.
+   * Optional, because in-universe time is genuinely vague and some units will
+   * never have a defensible year; those group under "undated" rather than being
+   * given a guess.
+   *
+   * It exists as its own field because the alternative is parsing a year back
+   * out of `setting`, which is a prose display string. Structure that a page
+   * needs belongs in the schema, not in a regular expression over English.
+   */
+  year: z.number().int().optional(),
   /* Human-readable, for display: '1943 — occupied Europe'. */
   setting: z.string().optional(),
   /* Why it sits here, when that isn't obvious — framing devices, flashbacks. */

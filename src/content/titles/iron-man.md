@@ -22,6 +22,7 @@ cast:
     billing: 3
 timeline:
   order: 1000
+  year: 2010
   setting: "2010 — Afghanistan, Malibu, Gulmira"
 ---
 

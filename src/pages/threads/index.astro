@@ -1,0 +1,110 @@
+---
+/*
+ * Every thread there is to follow, grouped by what kind of thing it is.
+ *
+ * "Threads" rather than "entities" in the URL and the copy: entities is the
+ * schema's word for it, thread is the product's, and it is the one a visitor
+ * might reasonably type.
+ */
+
+import { getCollection } from 'astro:content';
+
+import Base from '../../layouts/Base.astro';
+import PageIntro from '../../components/PageIntro.astro';
+import CardGrid from '../../components/CardGrid.astro';
+import EntryCard from '../../components/EntryCard.astro';
+import { ENTITY_KINDS, ENTITY_KINDS_PLURAL, type EntityKind } from '../../lib/format';
+import { ENTITY_ICONS } from '../../lib/icons';
+import Icon from '../../components/Icon.astro';
+import { href } from '../../lib/href';
+
+const entities = await getCollection('entities');
+
+/* Objects first, then places, then the rest: roughly the order a reader cares
+   about, and stable regardless of what gets added. */
+const order: EntityKind[] = ['object', 'location', 'organisation', 'event', 'reality'];
+
+const groups = order
+  .map((kind) => ({
+    kind,
+    entries: entities
+      .filter((entity) => entity.data.kind === kind)
+      .sort((a, b) => a.data.name.localeCompare(b.data.name)),
+  }))
+  .filter((group) => group.entries.length > 0);
+
+/* An accent per kind, so a group reads as one family on the page. */
+const accents: Record<EntityKind, 'magenta' | 'cyan' | 'amber'> = {
+  object: 'magenta',
+  location: 'cyan',
+  organisation: 'cyan',
+  event: 'amber',
+  reality: 'amber',
+};
+---
+
+<Base
+  title="Threads"
+  status="Phase 01 · Catalogue"
+  description="Objects, places, organisations, events and realities worth following across the MCU, each with every appearance it makes in in-universe order."
+>
+  <PageIntro
+    stamp="Cross-references"
+    title="Pick a thread, follow it"
+    lede="The things the films and episodes keep coming back to. Each one lists every appearance it makes, in the order the events happen rather than the order they were filmed."
+  />
+
+  {
+    groups.map((group) => (
+      <section class="group" aria-labelledby={`group-${group.kind}`}>
+        <h2 class="group-heading" id={`group-${group.kind}`}>
+          <Icon name={ENTITY_ICONS[group.kind]} size={15} />
+          {ENTITY_KINDS_PLURAL[group.kind]}
+          <span class="count">{group.entries.length}</span>
+        </h2>
+        <CardGrid>
+          {group.entries.map((entity) => (
+            <EntryCard
+              href={href(`threads/${entity.id}`)}
+              label={ENTITY_KINDS[entity.data.kind]}
+              icon={ENTITY_ICONS[entity.data.kind]}
+              title={entity.data.name}
+              summary={entity.data.summary}
+              accent={accents[group.kind]}
+              plate={false}
+              meta={[
+                entity.data.appearances.length === 1
+                  ? '1 appearance'
+                  : `${entity.data.appearances.length} appearances`,
+                ...(entity.data.aka.length > 0 ? [`Also: ${entity.data.aka[0]}`] : []),
+              ]}
+            />
+          ))}
+        </CardGrid>
+      </section>
+    ))
+  }
+</Base>
+
+<style>
+  .group + .group {
+    margin-top: var(--sas-space-xl);
+  }
+
+  .group-heading {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75em;
+    margin: 0 0 var(--sas-space-md);
+    font-family: var(--sas-font-mono);
+    font-size: 0.6875rem;
+    font-weight: 400;
+    letter-spacing: var(--sas-track-widest);
+    text-transform: uppercase;
+    color: var(--sas-cyan);
+  }
+
+  .count {
+    color: var(--sas-text-dim);
+  }
+</style>

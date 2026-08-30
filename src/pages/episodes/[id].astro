@@ -1,0 +1,351 @@
+---
+/*
+ * One episode.
+ *
+ * Episodes get their own pages because they are timeline units in their own
+ * right — a thread points at an episode, not at the series containing it — so
+ * every appearance row needs somewhere to link.
+ */
+
+import { getCollection, getEntry, render } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
+
+import Base from '../../layouts/Base.astro';
+import FactList from '../../components/FactList.astro';
+import Plate from '../../components/Plate.astro';
+import {
+  APPEARANCE_TYPES,
+  formatCertification,
+  formatDate,
+  formatEpisodeCode,
+  formatRuntime,
+  formatYear,
+  type AppearanceType,
+} from '../../lib/format';
+import { href } from '../../lib/href';
+import { referencesTo, unitKey } from '../../lib/timeline';
+
+export async function getStaticPaths() {
+  const episodes = await getCollection('episodes');
+  return episodes.map((episode) => ({ params: { id: episode.id }, props: { episode } }));
+}
+
+interface Props {
+  episode: CollectionEntry<'episodes'>;
+}
+
+const { episode } = Astro.props;
+const { data } = episode;
+const { Content } = await render(episode);
+
+const series = await getEntry(data.series);
+const accent = data.accent ?? (series?.data.accent ?? 'magenta');
+const code = formatEpisodeCode(data.season, data.episode);
+
+const directors = (await Promise.all(data.directors.map((person) => getEntry(person)))).filter(
+  (person) => person !== undefined,
+);
+
+const cast = await Promise.all(
+  [...data.cast]
+    .sort((a, b) => (a.billing ?? Infinity) - (b.billing ?? Infinity))
+    .map(async (member) => ({
+      character: await getEntry(member.character),
+      actor: await getEntry(member.actor),
+      note: member.note,
+    })),
+);
+
+const facts = [
+  { label: 'First aired', value: formatDate(data.releaseDate) },
+  { label: 'Runtime', value: formatRuntime(data.runtimeMinutes) },
+  ...(data.certification
+    ? [{ label: 'Certificate', value: formatCertification(data.certification) }]
+    : []),
+  {
+    label: 'Timeline',
+    value: data.timeline.setting ?? `Position ${data.timeline.order}`,
+  },
+];
+
+const key = unitKey('episodes', episode.id);
+const entityRefs = referencesTo(key, await getCollection('entities'));
+const characterRefs = referencesTo(key, await getCollection('characters'));
+
+/* Sibling episodes, so a reader can move along the season without going back. */
+const siblings = (await getCollection('episodes'))
+  .filter((other) => other.data.series.id === data.series.id)
+  .sort((a, b) => a.data.season - b.data.season || a.data.episode - b.data.episode);
+const position = siblings.findIndex((other) => other.id === episode.id);
+const previous = siblings[position - 1];
+const next = siblings[position + 1];
+---
+
+<Base
+  title={`${data.title} · ${series?.data.title ?? 'Episode'}`}
+  status={`Episode · ${formatYear(data.releaseDate)}`}
+  description={data.summary}
+>
+  <article data-accent={accent}>
+    <header class="hero">
+      <Plate
+        accent={accent}
+        size="hero"
+        seed={episode.id}
+        image={data.images.banner ?? data.images.poster}
+      />
+      <p class="sas-stamp kind">
+        {series ? <a href={href(`titles/${series.id}`)}>{series.data.title}</a> : 'Episode'}
+        <span class="code">{code}</span>
+      </p>
+      <h1 class="sas-glow-text">{data.title}</h1>
+      <p class="lede">{data.summary}</p>
+    </header>
+
+    <div class="layout">
+      <div class="main">
+        <section class="sas-prose"><Content /></section>
+
+        {
+          cast.length > 0 && (
+            <section aria-labelledby="cast-heading">
+              <h2 class="section-stamp" id="cast-heading">Cast</h2>
+              <ul class="cast">
+                {cast.map((member) => (
+                  <li>
+                    {member.character ? (
+                      <a class="character" href={href(`characters/${member.character.id}`)}>
+                        {member.character.data.name}
+                      </a>
+                    ) : (
+                      <span class="character">Unknown character</span>
+                    )}
+                    <span class="played">{member.actor?.data.name ?? 'Unknown'}</span>
+                    {member.note && <span class="note">{member.note}</span>}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )
+        }
+
+        {
+          (entityRefs.length > 0 || characterRefs.length > 0) && (
+            <section aria-labelledby="threads-heading">
+              <h2 class="section-stamp" id="threads-heading">Threads running through it</h2>
+              <ul class="threads">
+                {[
+                  ...entityRefs.map((ref) => ({ ...ref, base: 'threads' })),
+                  ...characterRefs.map((ref) => ({ ...ref, base: 'characters' })),
+                ].map(({ source, appearance, base }) => (
+                  <li>
+                    <a href={href(`${base}/${source.id}`)}>{source.data.name}</a>
+                    <span class="badge">{APPEARANCE_TYPES[appearance.type as AppearanceType]}</span>
+                    {appearance.scene && <p class="scene">{appearance.scene}</p>}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )
+        }
+      </div>
+
+      <aside class="side">
+        <FactList heading={code} facts={facts} />
+
+        {
+          directors.length > 0 && (
+            <div class="sas-panel credits">
+              <p class="panel-heading">Directed by</p>
+              <ul>
+                {directors.map((person) => (
+                  <li>{person.data.name}</li>
+                ))}
+              </ul>
+            </div>
+          )
+        }
+
+        <nav class="pager" aria-label="Episodes">
+          {previous ? (
+            <a href={href(`episodes/${previous.id}`)}>
+              ← {formatEpisodeCode(previous.data.season, previous.data.episode)}
+            </a>
+          ) : (
+            <span />
+          )}
+          {next && (
+            <a href={href(`episodes/${next.id}`)}>
+              {formatEpisodeCode(next.data.season, next.data.episode)} →
+            </a>
+          )}
+        </nav>
+      </aside>
+    </div>
+  </article>
+</Base>
+
+<style>
+  .hero {
+    margin-bottom: var(--sas-space-lg);
+  }
+
+  .kind {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75em;
+    margin: var(--sas-space-md) 0 var(--sas-space-2xs);
+  }
+
+  .code {
+    color: var(--sas-text-dim);
+  }
+
+  h1 {
+    margin: 0;
+    font-family: var(--sas-font-display);
+    font-size: clamp(1.35rem, 3.2vw, 2rem);
+    font-weight: 400;
+    line-height: 1.2;
+  }
+
+  .lede {
+    margin: var(--sas-space-sm) 0 0;
+    max-width: 62ch;
+    font-size: 1.0625rem;
+    color: var(--sas-text-muted);
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 17rem;
+    gap: var(--sas-space-xl);
+    align-items: start;
+  }
+
+  .main > section + section {
+    margin-top: var(--sas-space-lg);
+  }
+
+  .section-stamp {
+    margin: 0 0 var(--sas-space-sm);
+    font-family: var(--sas-font-mono);
+    font-size: 0.6875rem;
+    font-weight: 400;
+    letter-spacing: var(--sas-track-widest);
+    text-transform: uppercase;
+    color: var(--sas-accent-bright);
+  }
+
+  .cast {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(15rem, 100%), 1fr));
+    gap: var(--sas-space-sm);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    & li {
+      padding-left: var(--sas-space-sm);
+      border-left: 1px solid var(--sas-hairline);
+    }
+  }
+
+  .character {
+    display: block;
+    color: var(--sas-text);
+
+    &:hover {
+      color: var(--sas-cyan-bright);
+    }
+  }
+
+  .played,
+  .note {
+    display: block;
+    font-family: var(--sas-font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--sas-track-wide);
+    text-transform: uppercase;
+    color: var(--sas-text-dim);
+  }
+
+  .note {
+    color: var(--sas-amber);
+  }
+
+  .threads {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: var(--sas-space-sm);
+
+    & li {
+      padding: var(--sas-space-sm) 0;
+      border-top: 1px solid var(--sas-hairline);
+    }
+  }
+
+  .badge {
+    margin-left: 0.6em;
+    padding: 0.15em 0.5em;
+    border: 1px solid var(--sas-hairline-warm);
+    font-family: var(--sas-font-mono);
+    font-size: 0.5625rem;
+    letter-spacing: var(--sas-track-wide);
+    text-transform: uppercase;
+    color: var(--sas-accent-bright);
+  }
+
+  .scene {
+    margin: var(--sas-space-2xs) 0 0;
+    max-width: 62ch;
+    font-size: 0.9375rem;
+    color: var(--sas-text-muted);
+  }
+
+  .side {
+    display: grid;
+    gap: var(--sas-space-md);
+    position: sticky;
+    top: 6rem;
+  }
+
+  .panel-heading {
+    margin: 0 0 var(--sas-space-xs);
+    font-family: var(--sas-font-mono);
+    font-size: 0.625rem;
+    letter-spacing: var(--sas-track-widest);
+    text-transform: uppercase;
+    color: var(--sas-accent-bright);
+  }
+
+  .credits ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    color: var(--sas-text);
+  }
+
+  .pager {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--sas-space-sm);
+    font-family: var(--sas-font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--sas-track-wide);
+    text-transform: uppercase;
+  }
+
+  @media (max-width: 62rem) {
+    .layout {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--sas-space-lg);
+    }
+
+    .side {
+      position: static;
+    }
+  }
+</style>

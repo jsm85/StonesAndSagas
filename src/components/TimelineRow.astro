@@ -1,0 +1,188 @@
+---
+/*
+ * One row on a chronology: a timeline unit, and optionally what it is doing
+ * there.
+ *
+ * Shared by three pages that are the same view of different slices — the whole
+ * timeline, one thread's appearances, one character's. The spine down the left
+ * is drawn by the row rather than the list, so a row is self-contained and the
+ * lists stay plain <ol>s.
+ */
+
+import Icon from './Icon.astro';
+import type { IconName } from '../lib/icons';
+
+interface Props {
+  href: string;
+  name: string;
+  /* 'Film', 'Short', 'Episode'. */
+  kind: string;
+  /* The glyph for it. Episodes take the series glyph. */
+  icon?: IconName;
+  accent: 'magenta' | 'cyan' | 'amber';
+  /* 'WandaVision · S01E02', for an episode. */
+  context?: string;
+  /* In-universe setting: '1943 — occupied Europe'. */
+  setting?: string;
+  /* Release year, right-aligned — the other ordering, always visible. */
+  year: string;
+  /* On a thread page: what kind of appearance this is. */
+  badge?: string;
+  /* Which moment, and what the reference is. */
+  scene?: string;
+  note?: string;
+}
+
+const { href, name, kind, icon, accent, context, setting, year, badge, scene, note } =
+  Astro.props;
+---
+
+<li class="row" data-accent={accent}>
+  <span class="spine" aria-hidden="true"></span>
+
+  <div class="head">
+    <p class="kind">
+      {icon && <Icon name={icon} size={13} />}
+      <span>{kind}</span>
+      {badge && <span class="badge">{badge}</span>}
+    </p>
+    <h3 class="name"><a href={href}>{name}</a></h3>
+    {context && <p class="context">{context}</p>}
+    {setting && <p class="setting">{setting}</p>}
+  </div>
+
+  {
+    (scene || note) && (
+      <div class="detail">
+        {scene && <p class="scene">{scene}</p>}
+        {note && <p class="note">{note}</p>}
+      </div>
+    )
+  }
+
+  <p class="year"><span>{year}</span></p>
+</li>
+
+<style>
+  .row {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 15rem) minmax(0, 1fr) auto;
+    gap: var(--sas-space-md);
+    align-items: start;
+    padding: var(--sas-space-md) 0 var(--sas-space-md) var(--sas-space-md);
+    border-top: 1px solid var(--sas-hairline);
+
+    &:last-child {
+      border-bottom: 1px solid var(--sas-hairline);
+    }
+
+    &:hover .spine {
+      opacity: 1;
+      box-shadow: 0 0 12px var(--sas-accent);
+    }
+  }
+
+  /* The accent bar that makes a list of rows read as one line of travel. */
+  .spine {
+    position: absolute;
+    left: 0;
+    top: -1px;
+    bottom: -1px;
+    width: 2px;
+    background: var(--sas-accent);
+    opacity: 0.55;
+    transition:
+      opacity var(--sas-transition) ease,
+      box-shadow var(--sas-transition) ease;
+  }
+
+  .kind {
+    margin: 0 0 var(--sas-space-2xs);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em;
+    align-items: center;
+    font-family: var(--sas-font-mono);
+    font-size: 0.625rem;
+    letter-spacing: var(--sas-track-widest);
+    text-transform: uppercase;
+    color: var(--sas-text-dim);
+  }
+
+  .badge {
+    padding: 0.15em 0.5em;
+    border: 1px solid var(--sas-hairline-warm);
+    letter-spacing: var(--sas-track-wide);
+    color: var(--sas-accent-bright);
+  }
+
+  .name {
+    margin: 0;
+    font-size: 1.0625rem;
+    font-weight: 500;
+
+    & a {
+      color: var(--sas-text);
+
+      &:hover {
+        color: var(--sas-cyan-bright);
+      }
+    }
+  }
+
+  .context,
+  .setting {
+    margin: var(--sas-space-2xs) 0 0;
+    font-family: var(--sas-font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--sas-track-wide);
+    color: var(--sas-text-dim);
+  }
+
+  .detail {
+    min-width: 0;
+  }
+
+  .scene {
+    margin: 0;
+    font-size: 0.9375rem;
+    color: var(--sas-text);
+  }
+
+  .note {
+    margin: var(--sas-space-2xs) 0 0;
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    color: var(--sas-text-muted);
+  }
+
+  .year {
+    margin: 0;
+    font-family: var(--sas-font-mono);
+    font-size: 0.75rem;
+    letter-spacing: var(--sas-track-wide);
+    color: var(--sas-accent-bright);
+    text-align: right;
+  }
+
+  @media (max-width: 60rem) {
+    .row {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    /* Explicit placement, so the year stays beside the title it dates rather
+       than being pushed below the detail column. */
+    .head {
+      grid-area: 1 / 1;
+    }
+
+    .year {
+      grid-area: 1 / 2;
+    }
+
+    .detail {
+      grid-area: 2 / 1 / auto / -1;
+    }
+  }
+</style>

@@ -1,0 +1,292 @@
+---
+/*
+ * The timeline itself: era bands strung along one spine, with the jumps between
+ * them drawn rather than implied.
+ *
+ * The old page rendered every unit as an identical row, which made two episodes
+ * an hour apart look exactly like two films sixty-seven years apart. The gap
+ * markers are the fix, and the reason this is a component rather than a list.
+ */
+
+import Icon from './Icon.astro';
+import { driftByUnit, driftLabel, eraSpan, releaseSpan, type Era } from '../lib/eras';
+import { formatEpisodeCode, formatYear, UNIT_KINDS } from '../lib/format';
+import { UNIT_ICONS } from '../lib/icons';
+import { href } from '../lib/href';
+import { unitAnchor, unitKey, type TimelineUnit } from '../lib/timeline';
+
+interface Props {
+  eras: Era[];
+  /* Every unit, for working out how far each moves between the two orderings. */
+  units: TimelineUnit[];
+}
+
+const { eras, units } = Astro.props;
+const drift = driftByUnit(units);
+---
+
+<div class="track">
+  {
+    eras.map((era) => (
+      <section class="era" aria-labelledby={`era-${era.key}`}>
+        {era.gapYears !== undefined && (
+          <p class="gap">
+            <span class="gap-rule" aria-hidden="true" />
+            <span class="gap-label">{era.gapYears} years pass</span>
+            <span class="gap-rule" aria-hidden="true" />
+          </p>
+        )}
+
+        <header class="era-head">
+          <h2 class="era-name" id={`era-${era.key}`}>{era.label}</h2>
+          <p class="era-meta">
+            {eraSpan(era) && <span class="era-span">{eraSpan(era)}</span>}
+            <span class="era-released">Released {releaseSpan(era)}</span>
+          </p>
+        </header>
+
+        <ol class="units">
+          {era.units.map((unit) => {
+            const moved = driftLabel(drift.get(unitKey(unit.collection, unit.id)) ?? 0);
+            return (
+              <li class="unit" id={unitAnchor(unit)} data-accent={unit.accent}>
+                <span class="node" aria-hidden="true">
+                  <Icon name={UNIT_ICONS[unit.kind]} size={13} />
+                </span>
+
+                <div class="body">
+                  <p class="kind">
+                    <span>{UNIT_KINDS[unit.kind]}</span>
+                    {unit.series && (
+                      <span class="episode">
+                        {unit.series.name} · {formatEpisodeCode(unit.series.season, unit.series.episode)}
+                      </span>
+                    )}
+                  </p>
+                  <h3 class="name">
+                    <a href={href(`${unit.collection}/${unit.id}`)}>{unit.name}</a>
+                  </h3>
+                  {unit.setting && <p class="setting">{unit.setting}</p>}
+                  {moved && <p class="drift">{moved}</p>}
+                </div>
+
+                <p class="released">
+                  <span class="released-label">Released</span>
+                  <span class="released-year">{formatYear(unit.releaseDate)}</span>
+                </p>
+              </li>
+            );
+          })}
+        </ol>
+      </section>
+    ))
+  }
+</div>
+
+<style>
+  .era-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--sas-space-sm) var(--sas-space-md);
+    margin-bottom: var(--sas-space-md);
+  }
+
+  .era-name {
+    margin: 0;
+    font-family: var(--sas-font-display);
+    font-size: clamp(1.15rem, 3vw, 1.6rem);
+    font-weight: 400;
+    color: var(--sas-text);
+  }
+
+  .era-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sas-space-sm);
+    margin: 0;
+    font-family: var(--sas-font-mono);
+    font-size: 0.625rem;
+    letter-spacing: var(--sas-track-wider);
+    text-transform: uppercase;
+  }
+
+  .era-span {
+    color: var(--sas-cyan);
+  }
+
+  .era-released {
+    color: var(--sas-text-dim);
+  }
+
+  /* --- The gap between bands ---------------------------------------------- */
+
+  /* The most interesting fact on the page, and the one a flat list hides: the
+     chronology skips decades between some units and hours between others. */
+  .gap {
+    display: flex;
+    align-items: center;
+    gap: var(--sas-space-sm);
+    margin: var(--sas-space-lg) 0;
+  }
+
+  .gap-rule {
+    flex: 1;
+    height: 1px;
+    background-image: linear-gradient(
+      to right,
+      transparent,
+      var(--sas-hairline-warm) 20%,
+      var(--sas-hairline-warm) 80%,
+      transparent
+    );
+  }
+
+  .gap-label {
+    font-family: var(--sas-font-mono);
+    font-size: 0.625rem;
+    letter-spacing: var(--sas-track-widest);
+    text-transform: uppercase;
+    color: var(--sas-amber);
+  }
+
+  /* --- The spine ---------------------------------------------------------- */
+
+  .units {
+    position: relative;
+    margin: 0;
+    padding: 0 0 0 var(--sas-space-lg);
+    list-style: none;
+  }
+
+  /* One rail behind the nodes, fading in and out at the ends of each band so it
+     reads as a continuing line rather than a bar with hard edges. */
+  .units::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0.6875rem;
+    width: 1px;
+    background-image: linear-gradient(
+      to bottom,
+      transparent,
+      var(--sas-hairline) 8%,
+      var(--sas-hairline) 92%,
+      transparent
+    );
+  }
+
+  .unit {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--sas-space-md);
+    align-items: start;
+    padding: var(--sas-space-md) 0;
+
+    /* Anchored jumps land under the sticky header without this. */
+    scroll-margin-top: 6rem;
+  }
+
+  .unit + .unit {
+    border-top: 1px solid var(--sas-hairline);
+  }
+
+  .node {
+    position: absolute;
+    left: calc(var(--sas-space-lg) * -1);
+    top: var(--sas-space-md);
+    display: grid;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 1px solid var(--sas-accent);
+    border-radius: 50%;
+    background: var(--sas-void);
+    color: var(--sas-accent-bright);
+    transition:
+      box-shadow var(--sas-transition) ease,
+      background-color var(--sas-transition) ease;
+  }
+
+  .unit:hover .node,
+  .unit:focus-within .node {
+    background: color-mix(in oklab, var(--sas-accent) 22%, var(--sas-void));
+    box-shadow: 0 0 16px var(--sas-accent);
+  }
+
+  .kind {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75em;
+    margin: 0 0 var(--sas-space-2xs);
+    font-family: var(--sas-font-mono);
+    font-size: 0.625rem;
+    letter-spacing: var(--sas-track-widest);
+    text-transform: uppercase;
+    color: var(--sas-text-dim);
+  }
+
+  .episode {
+    color: var(--sas-accent-bright);
+  }
+
+  .name {
+    margin: 0;
+    font-size: 1.0625rem;
+    font-weight: 500;
+
+    & a {
+      color: var(--sas-text);
+
+      &:hover {
+        color: var(--sas-cyan-bright);
+      }
+    }
+  }
+
+  .setting {
+    margin: var(--sas-space-2xs) 0 0;
+    font-family: var(--sas-font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: var(--sas-track-wide);
+    color: var(--sas-text-dim);
+  }
+
+  /* Shown only where a title really moves between the two orderings — see
+     DRIFT_THRESHOLD. A chip on every row would bury the interesting ones. */
+  .drift {
+    display: inline-block;
+    margin: var(--sas-space-xs) 0 0;
+    padding: 0.2em 0.6em;
+    border: 1px solid var(--sas-hairline-warm);
+    font-family: var(--sas-font-mono);
+    font-size: 0.5625rem;
+    letter-spacing: var(--sas-track-wide);
+    text-transform: uppercase;
+    color: var(--sas-amber);
+  }
+
+  .released {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.2em;
+    margin: 0;
+    font-family: var(--sas-font-mono);
+    text-transform: uppercase;
+  }
+
+  .released-label {
+    font-size: 0.5rem;
+    letter-spacing: var(--sas-track-wide);
+    color: var(--sas-text-dim);
+  }
+
+  .released-year {
+    font-size: 0.8125rem;
+    letter-spacing: var(--sas-track-wide);
+    color: var(--sas-accent-bright);
+  }
+</style>

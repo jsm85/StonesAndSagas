@@ -1,0 +1,170 @@
+---
+/*
+ * The jump rail: the whole chronology compressed into one column, with a tick
+ * per unit linking to its row.
+ *
+ * This is what makes the page feel like a control rather than a list — the
+ * entire run is visible at once, and any part of it is one click away. It does
+ * that with anchors and native scrolling, so it ships no JavaScript.
+ *
+ * What it deliberately does *not* do is highlight where you currently are.
+ * Scroll-spying needs an island, and this site ships none; the rail is a way in,
+ * not a position indicator.
+ */
+
+import { unitAnchor, type TimelineUnit } from '../lib/timeline';
+import type { Era } from '../lib/eras';
+import { eraSpan } from '../lib/eras';
+
+interface Props {
+  eras: Era[];
+}
+
+const { eras } = Astro.props;
+
+const label = (unit: TimelineUnit) =>
+  unit.series ? `${unit.series.name}: ${unit.name}` : unit.name;
+---
+
+<nav class="rail" aria-label="Jump to a point in the timeline">
+  <ol class="bands">
+    {
+      eras.map((era) => (
+        <li class="band">
+          <p class="band-label">
+            <span class="band-name">{era.label}</span>
+            {eraSpan(era) && <span class="band-span">{eraSpan(era)}</span>}
+          </p>
+          <ol class="ticks">
+            {era.units.map((unit) => (
+              <li>
+                <a href={`#${unitAnchor(unit)}`} data-accent={unit.accent}>
+                  <span class="sas-sr-only">{label(unit)}</span>
+                  <span class="tick" aria-hidden="true" />
+                </a>
+              </li>
+            ))}
+          </ol>
+        </li>
+      ))
+    }
+  </ol>
+</nav>
+
+<style>
+  .rail {
+    position: sticky;
+    top: 6rem;
+  }
+
+  .bands,
+  .ticks {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .band + .band {
+    margin-top: var(--sas-space-md);
+  }
+
+  .band-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15em;
+    margin: 0 0 var(--sas-space-2xs);
+    font-family: var(--sas-font-mono);
+    font-size: 0.5625rem;
+    letter-spacing: var(--sas-track-wider);
+    text-transform: uppercase;
+  }
+
+  .band-name {
+    color: var(--sas-text-muted);
+  }
+
+  .band-span {
+    color: var(--sas-text-dim);
+  }
+
+  .ticks {
+    display: grid;
+    gap: 0.35rem;
+    padding-left: 0.125rem;
+  }
+
+  /* The hit area is the whole row, so a 2px tick is still a comfortable target;
+     the tick itself only has to be visible. */
+  .ticks a {
+    display: flex;
+    align-items: center;
+    height: 0.9rem;
+
+    &:hover .tick,
+    &:focus-visible .tick {
+      width: 100%;
+      background: var(--sas-accent-bright);
+      box-shadow: 0 0 10px var(--sas-accent);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--sas-cyan-bright);
+      outline-offset: 2px;
+    }
+  }
+
+  .tick {
+    width: 1.75rem;
+    height: 2px;
+    background: var(--sas-accent);
+    opacity: 0.75;
+    transition:
+      width var(--sas-transition) ease,
+      background-color var(--sas-transition) ease,
+      box-shadow var(--sas-transition) ease;
+  }
+
+  /* Below the two-column breakpoint the rail lies down: the ticks run left to
+     right above the timeline, which keeps it usable without stealing the width
+     the rows need. */
+  @media (max-width: 62rem) {
+    .rail {
+      position: static;
+      padding-bottom: var(--sas-space-md);
+      border-bottom: 1px solid var(--sas-hairline);
+    }
+
+    .bands {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--sas-space-md);
+    }
+
+    .band + .band {
+      margin-top: 0;
+    }
+
+    .ticks {
+      grid-auto-flow: column;
+      gap: 0.3rem;
+    }
+
+    .ticks a {
+      width: 0.9rem;
+      height: 1.1rem;
+      justify-content: center;
+    }
+
+    .tick {
+      width: 2px;
+      height: 60%;
+
+      /* Growing sideways is the wrong axis once the rail is horizontal. */
+      .ticks a:hover &,
+      .ticks a:focus-visible & {
+        width: 2px;
+        height: 100%;
+      }
+    }
+  }
+</style>
