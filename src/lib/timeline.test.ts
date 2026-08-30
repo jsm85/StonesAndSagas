@@ -10,6 +10,7 @@ import {
   resolveAppearances,
   seriesCredits,
   toTimelineUnits,
+  unitAnchor,
   unitKey,
   type EpisodeLike,
   type TitleLike,
@@ -394,5 +395,18 @@ describe('characterAppearances', () => {
       [{ id: 'same', data: { cast: [{ character: { id: 'x' }, actor: { id: 'b' } }] } }],
     );
     expect(rows).toHaveLength(2);
+  });
+});
+
+describe('unitAnchor', () => {
+  test('is URL-safe and distinguishes the two collections', () => {
+    expect(unitAnchor({ collection: 'titles', id: 'iron-man' })).toBe('titles-iron-man');
+    expect(unitAnchor({ collection: 'episodes', id: 'iron-man' })).toBe('episodes-iron-man');
+  });
+
+  test('contains nothing that needs escaping in a fragment or a selector', () => {
+    const anchor = unitAnchor({ collection: 'episodes', id: 'wandavision-s01e01' });
+    expect(anchor).toMatch(/^[a-z0-9-]+$/);
+    expect(encodeURIComponent(anchor)).toBe(anchor);
   });
 });

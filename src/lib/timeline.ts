@@ -27,7 +27,7 @@ export interface SelfContainedTitleData {
   title: string;
   accent: Accent;
   releaseDate: Date;
-  timeline: { order: number; setting?: string };
+  timeline: { order: number; year?: number; setting?: string };
 }
 
 export interface SeriesTitleData {
@@ -50,7 +50,7 @@ export interface EpisodeLike {
     episode: number;
     accent?: Accent;
     releaseDate: Date;
-    timeline: { order: number; setting?: string };
+    timeline: { order: number; year?: number; setting?: string };
   };
 }
 
@@ -70,6 +70,9 @@ export interface TimelineUnit {
   order: number;
   releaseDate: Date;
   accent: Accent;
+  /* The in-universe year, where the content states one. Never sorted on — it is
+     for grouping and labelling; `order` remains the only sort key. */
+  year?: number;
   setting?: string;
   /* Episodes only — what a row needs to say where it belongs. */
   series?: { id: string; name: string; season: number; episode: number };
@@ -101,6 +104,7 @@ export function toTimelineUnits(
     order: t.data.timeline.order,
     releaseDate: t.data.releaseDate,
     accent: t.data.accent,
+    year: t.data.timeline.year,
     setting: t.data.timeline.setting,
   }));
 
@@ -114,6 +118,7 @@ export function toTimelineUnits(
       order: e.data.timeline.order,
       releaseDate: e.data.releaseDate,
       accent: e.data.accent ?? series?.data.accent ?? 'magenta',
+      year: e.data.timeline.year,
       setting: e.data.timeline.setting,
       series: {
         id: e.data.series.id,
@@ -352,4 +357,13 @@ export function seriesCredits<T extends TitleCastLike>(
       title.data.kind === 'series' &&
       title.data.cast.some((member) => member.character.id === characterId),
   );
+}
+
+/*
+ * The fragment id for a unit, so the timeline's jump rail and its rows agree on
+ * one spelling. `unitKey` uses a colon, which is legal in a fragment but awkward
+ * to write in a selector and easy to get wrong; this is plainly URL-safe.
+ */
+export function unitAnchor(unit: Pick<TimelineUnit, 'collection' | 'id'>): string {
+  return `${unit.collection}-${unit.id}`;
 }

@@ -6,29 +6,39 @@
  * This is the page the content model was shaped around. A series does not
  * appear — its episodes do, each in its own place, interleaved with the films
  * around them.
+ *
+ * The control is anchors, native scrolling and :hover. No JavaScript: the one
+ * thing an island would buy is highlighting where you currently are in the jump
+ * rail, which is not worth being the first page on the site to ship one.
  */
 
 import { getCollection } from 'astro:content';
 
 import Base from '../layouts/Base.astro';
 import PageIntro from '../components/PageIntro.astro';
-import TimelineList from '../components/TimelineList.astro';
-import TimelineRow from '../components/TimelineRow.astro';
+import TimelineScale from '../components/TimelineScale.astro';
+import TimelineTrack from '../components/TimelineTrack.astro';
+import { toEras } from '../lib/eras';
 import { byTimelineOrder, toTimelineUnits } from '../lib/timeline';
-import { formatEpisodeCode, formatYear, UNIT_KINDS } from '../lib/format';
-import { UNIT_ICONS } from '../lib/icons';
 import { href } from '../lib/href';
 
 const units = toTimelineUnits(
   await getCollection('titles'),
   await getCollection('episodes'),
 ).sort(byTimelineOrder);
+
+const eras = toEras(units);
+const dated = units.filter((unit) => unit.year !== undefined);
+const span =
+  dated.length > 0
+    ? `${Math.min(...dated.map((u) => u.year!))}–${Math.max(...dated.map((u) => u.year!))}`
+    : undefined;
 ---
 
 <Base
   title="Timeline"
   status="Phase 01 · Catalogue"
-  description="Every MCU film, short and TV episode in in-universe chronological order, with television episodes interleaved with the films around them."
+  description="Every MCU film, short and TV episode in in-universe chronological order, grouped into eras, with television episodes interleaved with the films around them."
 >
   <PageIntro
     stamp="In-universe order"
@@ -36,39 +46,87 @@ const units = toTimelineUnits(
     lede="Films, shorts and episodes on one line of travel. A series is not a single point in the chronology — its episodes each take their own place, which is why a season can sit between two films rather than after them."
   />
 
-  <TimelineList>
+  <div class="summary">
+    <p class="stat">
+      <span class="stat-value">{units.length}</span>
+      <span class="stat-label">Units on the line</span>
+    </p>
     {
-      units.map((unit) => (
-        <TimelineRow
-          href={href(`${unit.collection}/${unit.id}`)}
-          name={unit.name}
-          kind={UNIT_KINDS[unit.kind]}
-          icon={UNIT_ICONS[unit.kind]}
-          accent={unit.accent}
-          context={
-            unit.series
-              ? `${unit.series.name} · ${formatEpisodeCode(unit.series.season, unit.series.episode)}`
-              : undefined
-          }
-          setting={unit.setting}
-          year={formatYear(unit.releaseDate)}
-        />
-      ))
+      span && (
+        <p class="stat">
+          <span class="stat-value">{span}</span>
+          <span class="stat-label">In-universe span</span>
+        </p>
+      )
     }
-  </TimelineList>
+    <p class="stat">
+      <span class="stat-value">{eras.length}</span>
+      <span class="stat-label">Eras</span>
+    </p>
+  </div>
+
+  <div class="layout">
+    <TimelineScale eras={eras} />
+    <TimelineTrack eras={eras} units={units} />
+  </div>
 
   <p class="footnote">
-    The right-hand column is the release year — the other ordering, kept in view
-    so the disagreement between the two is visible rather than asserted. The same
-    catalogue is also listed <a href={href('titles')}>in release order</a>.
+    Every row carries its release year as well, so the disagreement between the
+    two orderings stays visible rather than asserted. The same catalogue is also
+    listed <a href={href('titles')}>in release order</a>.
   </p>
 </Base>
 
 <style>
+  .summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sas-space-lg);
+    margin-bottom: var(--sas-space-lg);
+    padding-bottom: var(--sas-space-md);
+    border-bottom: 1px solid var(--sas-hairline);
+  }
+
+  .stat {
+    margin: 0;
+  }
+
+  .stat-value {
+    display: block;
+    font-family: var(--sas-font-display);
+    font-size: 1.35rem;
+    line-height: 1.1;
+    color: var(--sas-magenta-bright);
+  }
+
+  .stat-label {
+    display: block;
+    margin-top: 0.35em;
+    font-family: var(--sas-font-mono);
+    font-size: 0.5625rem;
+    letter-spacing: var(--sas-track-widest);
+    text-transform: uppercase;
+    color: var(--sas-text-dim);
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 7.5rem minmax(0, 1fr);
+    gap: var(--sas-space-lg);
+    align-items: start;
+  }
+
   .footnote {
-    margin: var(--sas-space-lg) 0 0;
+    margin: var(--sas-space-xl) 0 0;
     max-width: 62ch;
     font-size: 0.9375rem;
     color: var(--sas-text-dim);
+  }
+
+  @media (max-width: 62rem) {
+    .layout {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--sas-space-md);
+    }
   }
 </style>

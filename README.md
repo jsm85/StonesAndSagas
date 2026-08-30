@@ -32,10 +32,10 @@ All three features above are built and browsable — on a seed catalogue of four
 titles, two episodes, nine threads and four comics and books. The machinery is
 finished; filling it with a real catalogue is content work, not code.
 
-You can walk the timeline with WandaVision's episodes interleaved between the
-films, open a thread like the Tesseract and see every appearance in order, or
-open Howard Stark and find him cast in one film and merely discussed in
-another.
+You can walk the timeline — grouped into eras, with the decades it skips drawn
+rather than implied, and WandaVision's episodes interleaved between the films —
+open a thread like the Tesseract and see every appearance in order, or open
+Howard Stark and find him cast in one film and merely discussed in another.
 
 Everything is static HTML with no JavaScript at all. Content is authored as
 Markdown and validated against Zod schemas at build time:

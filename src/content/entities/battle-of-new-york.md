@@ -6,6 +6,7 @@ aka:
 summary: An alien invasion through a portal over Manhattan, and the fixed point that a great deal of later material dates itself against.
 timeline:
   order: 1500
+  year: 2012
   setting: "2012 — Manhattan"
 appearances:
   - unit: { title: item-47 }

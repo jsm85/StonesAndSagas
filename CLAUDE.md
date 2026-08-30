@@ -49,7 +49,9 @@ machinery is built; the content is not. Tracked contents:
 │   │   ├── SiteFooter.astro      # carries the fan-project disclaimer
 │   │   ├── SiteHeader.astro      # sticky wordmark, nav + telemetry pill
 │   │   ├── TimelineList.astro    # <ol> for chronologies
-│   │   └── TimelineRow.astro     # one row on any chronology
+│   │   ├── TimelineRow.astro     # one row on any chronology
+│   │   ├── TimelineScale.astro   # the timeline's jump rail
+│   │   └── TimelineTrack.astro   # era bands, spine and gap markers
 │   ├── content/         # the catalogue itself
 │   │   ├── characters/  # one .md per character
 │   │   ├── entities/    # one .md per object, place, reality, group, event
@@ -61,6 +63,7 @@ machinery is built; the content is not. Tracked contents:
 │   ├── layouts/
 │   │   └── Base.astro   # shared page shell
 │   ├── lib/             # the logic, with its tests beside it
+│   │   ├── eras.ts      # era banding, the gaps between them, release drift
 │   │   ├── format.ts    # dates, runtimes, labels for every schema enum
 │   │   ├── href.ts      # base-path-safe internal links
 │   │   ├── icons.ts     # which glyph stands for which kind
@@ -399,7 +402,7 @@ Eleven routes, all static, all rendered from the collections:
 | Route | Shows |
 | --- | --- |
 | `/` | landing page |
-| `/timeline` | every film, short and episode in in-universe order |
+| `/timeline` | every film, short and episode in in-universe order, in era bands |
 | `/titles`, `/titles/[id]` | the catalogue in **release** order, and one title |
 | `/episodes/[id]` | one episode |
 | `/threads`, `/threads/[id]` | entities, and every appearance of one, in order |
@@ -408,6 +411,13 @@ Eleven routes, all static, all rendered from the collections:
 
 Conventions worth keeping to:
 
+- **The timeline is a control, and still ships no JavaScript.** Era bands, a
+  spine with a node per unit, drawn markers for the decades the chronology
+  skips, and a sticky jump rail of anchor links. The one thing an island would
+  add is scroll-spying to highlight your position in the rail; that is not worth
+  being the first page on the site to ship one. Anchored rows carry
+  `scroll-margin-top` so a jump does not land under the sticky header — verified
+  in a browser, not assumed.
 - **Two orderings, two pages, no JavaScript.** Release order and in-universe
   order are `/titles` and `/timeline` rather than one page with a toggle. A
   toggle means shipping a client-side island for something two static pages do
@@ -513,6 +523,17 @@ Decisions worth knowing before you extend it:
 - **`timeline.order` is a bare sort key, not a date.** In-universe time is vague
   and occasionally circular; a number only has to compare correctly. Seed values
   are spaced in hundreds so a title can be inserted without renumbering.
+- **`timeline.year` is optional, and never sorted on.** It is the in-universe
+  year a unit opens in, and exists so `/timeline` can group era bands without
+  parsing a year back out of `setting`, which is a prose display string.
+  Structure a page needs belongs in the schema, not in a regular expression over
+  English. Units without a year band together as "Undated" rather than being
+  given a guess.
+- **Era bands are consecutive runs, not buckets.** `toEras` walks the units in
+  in-universe order and starts a band whenever the decade changes, so a
+  chronology that returns to an earlier decade gets a second band for it. The
+  order is the truth; the year only labels it. Reordering units to tidy the
+  decades together would be reordering the timeline.
 - **Every schema is a `strictObject`.** Zod's default is to *strip* unknown keys,
   which would silently swallow a misspelled field name. Strict turns that into a
   build failure — verified: `runtimeMins` fails with `Unrecognized key`.
