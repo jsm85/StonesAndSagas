@@ -1,0 +1,29 @@
+{
+  "id": 123,
+  "season_number": 1,
+  "episodes": [
+    {
+      "id": 2001,
+      "name": "Filmed Before a Live Studio Audience",
+      "season_number": 1,
+      "episode_number": 1,
+      "air_date": "2021-01-15",
+      "runtime": 30,
+      "overview": "An episode synopsis that must never reach a content file.",
+      "crew": [
+        { "id": 8, "name": "Matt Shakman", "job": "Director" },
+        { "id": 9, "name": "Jac Schaeffer", "job": "Writer" }
+      ]
+    },
+    {
+      "id": 2002,
+      "name": "Don't Touch That Dial",
+      "season_number": 1,
+      "episode_number": 2,
+      "air_date": "2021-01-15",
+      "runtime": 36,
+      "overview": "Another synopsis.",
+      "crew": [{ "id": 8, "name": "Matt Shakman", "job": "Director" }]
+    }
+  ]
+}

@@ -16,6 +16,9 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    include: ['src/**/*.test.ts'],
+    /* The site's logic, and the authoring utility's. The utility is plain ESM
+       JavaScript — it is a tool the owner runs with node, and a build step for
+       that would be a cost with no return. */
+    include: ['src/**/*.test.ts', 'utilities/**/*.test.mjs'],
   },
 });
