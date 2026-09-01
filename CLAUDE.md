@@ -80,6 +80,10 @@ machinery is built; the content is not. Tracked contents:
 │   └── styles/
 │       ├── fonts/       # self-hosted woff2 subsets + OFL licence
 │       └── theme.css    # design tokens and base elements
+├── utilities/           # local authoring tool — not part of the site
+│   ├── lib/             # pure, unit-tested: slugs, YAML, TMDB and wiki mapping
+│   ├── sas.mjs          # the CLI: fetching, asking, writing
+│   └── README.md        # the TMDB key, and the rule about prose
 ├── astro.config.mjs
 ├── package.json
 ├── package-lock.json
@@ -219,7 +223,11 @@ schemas at build time — typed content models, which suits the owner's .NET
 background.
 
 Installed: `astro` (^7), plus `@astrojs/check` and `typescript` as dev
-dependencies for the typecheck step. `tsconfig.json` extends
+dependencies for the typecheck step, `vitest` for the unit suite, `@types/node`
+(the test config and the authoring utility both touch `process`), and `yaml` —
+which is Astro's own frontmatter parser, declared explicitly so the utility's
+emitter can be tested by round-tripping through the parser that will actually
+read what it writes. `tsconfig.json` extends
 `astro/tsconfigs/strict`.
 
 Constraints that still apply:
@@ -639,6 +647,44 @@ z.union([
 That shape also makes "exactly one of the two" structural — neither and both are
 build failures. Prefer a plain union over a discriminated one wherever a
 reference sits inside it; the discriminator costs you the only check there is.
+
+## The authoring utility [current]
+
+`utilities/sas.mjs` is a local tool for pulling the *facts* about a title,
+character or object out of TMDB and the Marvel wikis and writing a
+correctly-shaped file into the right directory. It is not part of the site:
+nothing in `src/` imports it, it never runs in CI or at build time, and it is
+never deployed. Full documentation in
+[`utilities/README.md`](utilities/README.md).
+
+```bash
+node utilities/sas.mjs title "iron man"
+node utilities/sas.mjs wiki "Tesseract" --kind object
+node utilities/sas.mjs check     # list unfinished placeholders
+```
+
+The rules it works under, which matter more than the commands:
+
+- **It fetches facts and never writes fetched prose.** A TMDB overview is studio
+  marketing or a lift from Wikipedia, and Fandom text is someone else's CC-BY-SA
+  writing — both are what the
+  [IP rules](#fan-content-and-ip-rules-hard-rule) forbid. Overviews and wiki
+  snippets are printed to the terminal to read; `summary` and the body are
+  written as placeholders. **If you extend this tool, do not relax that.**
+- **It decides nothing editorial.** `timeline.order` goes to the end of the
+  chronology with a `TODO`; `year`, `setting`, `accent` and every relationship
+  are left for a person. A plausible-looking wrong timeline position is worse
+  than an obviously unplaced one.
+- **Zero dependencies**, plain ESM with JSDoc types. Node 22 supplies `fetch`,
+  `readline/promises` and `parseArgs`; a build step for a dev tool earns nothing.
+- Logic lives in `utilities/lib/` and is pure and tested; `sas.mjs` does the
+  fetching, asking and writing and holds nothing worth testing.
+
+The network path is **unverified** — it was built where TMDB and Fandom are both
+blocked by an egress proxy. The mappings are tested against fixtures, and the
+whole chain was checked end to end by generating real files from those fixtures
+and building them, but nobody has yet seen a real API response. Use `--dry-run`
+first.
 
 ## Local development [current]
 

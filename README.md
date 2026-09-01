@@ -78,6 +78,21 @@ The site is served under its base path, so open
 expected. That base path exists because the site deploys as a GitHub Pages
 *project* site.
 
+## Adding to the catalogue
+
+`utilities/sas.mjs` is a local tool that fetches the facts about a title,
+character or object from TMDB and the Marvel wikis and writes a correctly-shaped
+file into the right directory, leaving the writing and the relationships to you.
+
+```bash
+node utilities/sas.mjs title "iron man"
+node utilities/sas.mjs wiki "Tesseract" --kind object
+```
+
+It never writes fetched prose — summaries and bodies come out as placeholders,
+because copying from TMDB, Fandom or Wikipedia is exactly what this project does
+not do. See [utilities/README.md](utilities/README.md).
+
 ## Deployment
 
 Pushing to `main` builds and publishes the site via GitHub Actions. There is no

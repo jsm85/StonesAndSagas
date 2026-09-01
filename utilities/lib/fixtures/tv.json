@@ -1,0 +1,22 @@
+{
+  "id": 85271,
+  "name": "WandaVision",
+  "first_air_date": "2021-01-15",
+  "last_air_date": "2021-03-05",
+  "overview": "A synopsis that must never reach a content file.",
+  "created_by": [{ "id": 3, "name": "Jac Schaeffer" }],
+  "number_of_seasons": 1,
+  "content_ratings": {
+    "results": [
+      { "iso_3166_1": "GB", "rating": "15" },
+      { "iso_3166_1": "US", "rating": "TV-14" }
+    ]
+  },
+  "aggregate_credits": {
+    "cast": [
+      { "id": 5, "name": "Elizabeth Olsen", "roles": [{ "character": "Wanda Maximoff" }], "order": 0 },
+      { "id": 6, "name": "Paul Bettany", "roles": [{ "character": "Vision" }], "order": 1 },
+      { "id": 7, "name": "Kathryn Hahn", "roles": [{ "character": "Agnes / Agatha Harkness" }], "order": 2 }
+    ]
+  }
+}
