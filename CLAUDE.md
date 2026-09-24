@@ -80,6 +80,8 @@ machinery is built; the content is not. Tracked contents:
 │   └── styles/
 │       ├── fonts/       # self-hosted woff2 subsets + OFL licence
 │       └── theme.css    # design tokens and base elements
+├── .devcontainer/
+│   └── devcontainer.json  # Node 22, npm ci, port 4321 — for working locally
 ├── utilities/           # local authoring tool — not part of the site
 │   ├── lib/             # pure, unit-tested: slugs, YAML, TMDB and wiki mapping
 │   ├── sas.mjs          # the CLI: fetching, asking, writing
@@ -688,8 +690,35 @@ first.
 
 ## Local development [current]
 
-Requires **Node.js >=22.12.0** (Astro 7's floor; recorded in `package.json`
-under `engines` and pinned to 22 in both workflows).
+**The quickest start is the dev container.** `.devcontainer/devcontainer.json`
+gives you the right Node, runs `npm ci` on create, and forwards port 4321 — open
+the repo in VS Code and choose "Reopen in Container", or run
+`devcontainer up --workspace-folder .`.
+
+Three things it encodes, so they stop being tribal knowledge:
+
+- **Node 22**, matching the `engines` floor and the pin in both workflows. Keep
+  all three in step — a container on a different major than CI produces bugs that
+  only appear on someone else's machine.
+- **The base path.** The forwarded port is labelled with it, because
+  `http://localhost:4321/StonesAndSagas/` is the site and the bare root 404s.
+- **TMDB credentials pass through from your shell** via `${localEnv:...}`, so the
+  authoring utility works inside the container without a key ever reaching the
+  repository. Unset on the host is unset in the container, which `sas.mjs`
+  reports plainly.
+
+It deliberately has no Dockerfile and no `features`: the project needs Node and
+git and nothing else. It also does **not** set `git config user.email`, because
+silently rewriting a git identity is a surprise — but pushes need the noreply
+address, so run this once in a fresh container:
+
+```bash
+git config user.email "1835096+jsm85@users.noreply.github.com"
+```
+
+Working outside the container is fine too. It requires **Node.js >=22.12.0**
+(Astro 7's floor; recorded in `package.json` under `engines` and pinned to 22 in
+both workflows).
 
 ```bash
 npm install      # or `npm ci` for an exact install from the lockfile
