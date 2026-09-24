@@ -62,7 +62,11 @@ everything is resolved at build time into static files.
 
 ## Local development
 
-Requires Node.js 22.12 or newer.
+The quickest way in is the dev container: open the repo in VS Code and choose
+**Reopen in Container**. It brings the right Node, installs from the lockfile and
+forwards the dev server port.
+
+Otherwise, Node.js 22.12 or newer.
 
 ```bash
 npm install

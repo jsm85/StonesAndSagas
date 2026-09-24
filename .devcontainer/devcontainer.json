@@ -1,0 +1,63 @@
+// Stones & Sagas — local development container.
+//
+// Open the repository in VS Code and choose "Reopen in Container", or run
+// `devcontainer up --workspace-folder .` with the CLI. Everything the project
+// needs is Node and git, so this is a prebuilt image rather than a Dockerfile —
+// a build step for a project this size is a cost with no return.
+//
+// See ../CLAUDE.md for the project's conventions, and ../utilities/README.md for
+// the authoring tool the TMDB variables below are for.
+{
+  "name": "Stones & Sagas",
+
+  // Node 22 to match the `engines` floor in package.json (>=22.12.0), which is
+  // Astro 7's, and the '22' both GitHub workflows pin. Keep these three in step:
+  // a container on a different major than CI is a class of bug that only ever
+  // shows up on someone else's machine.
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22-bookworm",
+
+  // An exact install from the lockfile — the same command CI runs, so a fresh
+  // container and a fresh CI run start from identical trees.
+  "postCreateCommand": "npm ci",
+
+  "forwardPorts": [4321],
+  "portsAttributes": {
+    "4321": {
+      // The site is served under the GitHub Pages project base path, so the
+      // forwarded URL needs /StonesAndSagas/ on the end. A bare root 404s —
+      // that is the base path working, not a broken dev server.
+      "label": "Astro dev — open /StonesAndSagas/",
+      "onAutoForward": "notify"
+    }
+  },
+
+  // Passed through from your shell, never stored in the repository. Unset on the
+  // host means unset in here, which `sas.mjs` reports plainly rather than failing
+  // obscurely. Only the authoring utility reads these; the site never does.
+  "remoteEnv": {
+    "TMDB_API_KEY": "${localEnv:TMDB_API_KEY}",
+    "TMDB_ACCESS_TOKEN": "${localEnv:TMDB_ACCESS_TOKEN}"
+  },
+
+  "customizations": {
+    "vscode": {
+      // Only for tools the project actually uses. There is no Prettier or ESLint
+      // config here, and an opinionated formatter extension that then reformats
+      // against the existing style is worse than no extension at all.
+      "extensions": [
+        "astro-build.astro-vscode",
+        "vitest.explorer"
+      ],
+      "settings": {
+        // Typecheck with the project's TypeScript, not the copy VS Code ships.
+        // The repo extends astro/tsconfigs/strict, so the two disagreeing is
+        // exactly the kind of thing that wastes an afternoon.
+        "typescript.tsdk": "node_modules/typescript/lib"
+      }
+    }
+  },
+
+  // The image's own unprivileged user. Named explicitly so file ownership in the
+  // mounted workspace is obvious rather than something to work out later.
+  "remoteUser": "node"
+}
